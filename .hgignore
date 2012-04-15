@@ -4,4 +4,7 @@ syntax:regexp
 ^(bin|obj)/
 
 # visual studio temporary files
-^.*\.suo$
+^[^/]*\.suo$
+
+# visual studio user settings
+^[^/]*\.user$
