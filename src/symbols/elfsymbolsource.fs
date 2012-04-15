@@ -59,8 +59,8 @@ type ElfSymbolSource(path, configuration) =
             data
             |> Seq.map (fun (_, _, typ, name) -> name)
             |> Seq.map (fun name ->
-                if name.EndsWith("$rodata") then name.[0..name.Length-7]
-                elif name.StartsWith(".") then name.[1..]
+                if name.EndsWith("$rodata") then name.Substring(0, name.Length - 7)
+                elif name.StartsWith(".") then name.Substring(1)
                 else name)
             |> Process.popen2 (configuration "tools/c++filt/@path") ""
 
