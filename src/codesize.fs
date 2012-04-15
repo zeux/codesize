@@ -8,9 +8,10 @@ open Symbols
 
 [<STAThread>] do ()
 
+let exepath = AppDomain.CurrentDomain.BaseDirectory
 let config =
-    ["tools/nm/@path", @"D:\work\codesize\tools\nm.exe";
-     "tools/c++filt/@path", @"D:\work\codesize\tools\c++filt.exe"]
+    ["tools/nm/@path", exepath + @"\nm.exe";
+     "tools/demangle/@path", exepath + @"\demangle.exe"]
     |> Map.ofList
 
 let t = TreeView()

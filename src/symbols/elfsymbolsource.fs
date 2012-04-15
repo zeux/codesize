@@ -62,7 +62,7 @@ type ElfSymbolSource(path, configuration) =
                 if name.EndsWith("$rodata") then name.Substring(0, name.Length - 7)
                 elif name.StartsWith(".") then name.Substring(1)
                 else name)
-            |> Process.popen2 (configuration "tools/c++filt/@path") ""
+            |> Process.popen2 (configuration "tools/demangle/@path") ""
 
         // get symbols
         Seq.map2 (fun (addr, size, typ, _) name -> { address = addr; name = name; size = size; section = NM.getType typ }) data names

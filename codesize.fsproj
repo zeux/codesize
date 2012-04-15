@@ -38,6 +38,18 @@
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets" Condition=" Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')" />
   <ItemGroup>
+    <None Include="sdks\binutils\demangle.exe">
+      <Link>demangle.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="sdks\binutils\nm.exe">
+      <Link>nm.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="sdks\binutils\objdump.exe">
+      <Link>objdump.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="sdks\fastprintf\fastprintf.fs" />
     <Compile Include="src\process.fs" />
     <Compile Include="src\symbols\symbol.fs" />
