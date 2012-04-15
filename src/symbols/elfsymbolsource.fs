@@ -65,7 +65,7 @@ type ElfSymbolSource(path, configuration) =
             |> Process.popen2 (configuration "tools/c++filt/@path") ""
 
         // get symbols
-        Seq.map2 (fun (addr, size, typ, _) name -> { address = addr; name = name; size = size; section = typ }) data names
+        Seq.map2 (fun (addr, size, typ, _) name -> { address = addr; name = name; size = size; section = NM.getType typ }) data names
 
     interface ISymbolSource with
         member this.Symbols = symbols
