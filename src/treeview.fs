@@ -73,27 +73,6 @@ let rec private buildTree items index =
     |> Array.rev
     |> Array.map (fun (size, node) -> node)
 
-let private getStats items =
-    // group items by groups and find total size for each group
-    let groups =
-        items
-        |> Seq.groupBy (fun (_, group, _) -> group)
-        |> Array.ofSeq
-        |> Array.map (fun (group, items) -> group, Seq.sumBy (fun (size: int, _, _) -> size) items)
-
-    // get sizes
-    let sizes =
-        groups
-        |> Array.map (fun (group, size) -> (if group = "" then "other" else group), size)
-        |> Array.sortBy (fun (group, size) -> group)
-        |> Array.map (fun (group, size) -> group + size.ToString(": #,0"))
-
-    // get total size
-    let total_size = groups |> Array.sumBy (fun (group, size) -> size)
-
-    // return size information
-    total_size.ToString("#,0 ") + (if sizes.Length = 0 then "" else "(" + String.Join(", ", sizes) + ")")
-
 let bindToView (view: TreeView) data =
     let items = data
     let nodes = buildTree items 0
