@@ -40,10 +40,10 @@
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets" Condition=" Exists('$(MSBuildExtensionsPath32)\..\Microsoft SDKs\F#\3.0\Framework\v4.0\Microsoft.FSharp.Targets')" />
   <ItemGroup>
-    <Compile Include="src\fastprintf.fs" />
+    <Compile Include="sdks\fastprintf\fastprintf.fs" />
     <Compile Include="src\process.fs" />
-    <Compile Include="src\symbol.fs" />
-    <Compile Include="src\elfsymbolsource.fs" />
+    <Compile Include="src\symbols\symbol.fs" />
+    <Compile Include="src\symbols\elfsymbolsource.fs" />
     <Compile Include="src\codesize.fs" />
     <None Include="App.config" />
   </ItemGroup>
