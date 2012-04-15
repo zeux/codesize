@@ -18,7 +18,7 @@ let w = Window(Content = t)
 let app = Application()
 let context = DispatcherSynchronizationContext(app.Dispatcher)
 
-app.Activated.Add(fun _ ->
+app.Startup.Add(fun _ ->
     let path =
         if Environment.GetCommandLineArgs().Length > 1 then
             Environment.GetCommandLineArgs().[1]
