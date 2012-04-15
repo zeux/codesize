@@ -1,0 +1,7 @@
+syntax:regexp
+
+# build artifacts
+^(bin|obj)/
+
+# visual studio temporary files
+^.*\.suo$
