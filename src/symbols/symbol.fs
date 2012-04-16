@@ -6,6 +6,13 @@ type Symbol =
       size: uint64
       section: string }
 
+type FileLine =
+    { address: uint64
+      size: uint64
+      file: string
+      line: int }
+
 [<Interface>]
 type ISymbolSource =
     abstract member Symbols: seq<Symbol>
+    abstract member FileLines: seq<FileLine>

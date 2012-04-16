@@ -14,8 +14,9 @@ let (?) (e: FrameworkElement) (name: string) = e.FindName name
 
 let exepath = AppDomain.CurrentDomain.BaseDirectory
 let config =
-    ["tools/nm/@path", exepath + @"\nm.exe";
-     "tools/demangle/@path", exepath + @"\demangle.exe"]
+    ["tools/nm/@path", exepath + @"\nm.exe"
+     "tools/demangle/@path", exepath + @"\demangle.exe"
+     "tools/objdump/@path", exepath + @"\objdump.exe"]
     |> Map.ofList
 
 let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Relative)) :?> Window
