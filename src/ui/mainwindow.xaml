@@ -70,5 +70,10 @@
                 <TreeView Name="TreeView" />
             </TabItem>
         </TabControl>
+        <StatusBar Grid.Row="2">
+            <StatusBarItem>
+                <Label Name="LabelStatus" Content="" Padding="0,0,0,0" />
+            </StatusBarItem>
+        </StatusBar>
     </Grid>
 </Window>

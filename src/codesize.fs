@@ -41,6 +41,7 @@ module controls =
     let tabLoading = window?TabLoading :?> TabItem
     let tabTreeView = window?TabTreeView :?> TabItem
     let labelLoading = window?LabelLoading :?> Label
+    let labelStatus = window?LabelStatus :?> Label
 
 let app = Application()
 let context = DispatcherSynchronizationContext(app.Dispatcher)
@@ -144,6 +145,8 @@ let rebindToView syms =
     rebindToViewToken.Value.Cancel()
     rebindToViewToken := new Threading.CancellationTokenSource()
 
+    controls.labelStatus.Content <- "Filtering..."
+
     let token = rebindToViewToken.Value.Token
 
     Async.Start(async {
@@ -155,6 +158,7 @@ let rebindToView syms =
 
             do! Async.SwitchToContext context
             treeViewBinding.Update(fs, getSymbolText)
+            controls.labelStatus.Content <- ""
         with e -> ()
         }, token)
     
