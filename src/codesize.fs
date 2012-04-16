@@ -32,12 +32,17 @@ module controls =
     | MergeAllTypes = 1
     | MergeIncompatibleTypes = 2
 
+    type GroupPrefix =
+    | Letter = 0
+    | Word = 1
+
     let treeView = window?TreeView :?> TreeView
     let filterText = window?FilterText :?> TextBox
     let filterTextType = window?FilterTextType :?> ComboBox 
     let filterSize = window?FilterSize :?> TextBox
     let filterSections = window?FilterSections :?> ComboBox
     let groupTemplates = window?GroupTemplates :?> ComboBox
+    let groupPrefix = window?GroupPrefix :?> ComboBox
     let tabControl = window?TabControl :?> TabControl
     let tabLoading = window?TabLoading :?> TabItem
     let tabTreeView = window?TabTreeView :?> TabItem
@@ -53,9 +58,11 @@ let getFilterTextFn typ (text: string) =
     let contains (s: string) (p: string) = s.IndexOf(p, StringComparison.InvariantCultureIgnoreCase) >= 0
 
     match typ with
+    | _ when text = "" ->
+        fun name -> true
     | controls.FilterTextType.Words ->
-        let words = text.Split(null)
-        fun name -> words |> Array.forall (fun w -> contains name w)
+            let words = text.Split(null)
+            fun name -> words |> Array.forall (fun w -> contains name w)
     | controls.FilterTextType.Phrase ->
         fun name -> contains name text
     | controls.FilterTextType.Regex ->
@@ -65,7 +72,7 @@ let getFilterTextFn typ (text: string) =
         with _ ->
             fun name -> true
     | _ ->
-        fun name -> true
+        failwithf "Unknown type %O" typ
 
 let getFilterSymbolFn () =
     let ft = getFilterTextFn (enum controls.filterTextType.SelectedIndex) controls.filterText.Text
@@ -125,6 +132,8 @@ let getGroupSymbolFn () =
     let gt: controls.GroupTemplates = enum controls.groupTemplates.SelectedIndex
 
     match gt with
+    | controls.GroupTemplates.None ->
+        id
     | controls.GroupTemplates.MergeAllTypes ->
         templateConvertArgs (fun arg -> "T")
     | controls.GroupTemplates.MergeIncompatibleTypes ->
@@ -132,10 +141,40 @@ let getGroupSymbolFn () =
             let at = arg.Trim()
             if at.EndsWith("*") || at.EndsWith("* const") then "?*" else "?")
     | _ ->
-        id
+        failwithf "Unknown type %O" gt
 
 let getPrefixSymbolFn () =
-    fun (name: string) -> if name.Length > 0 then 1 else 0
+    let gp: controls.GroupPrefix = enum controls.groupPrefix.SelectedIndex
+
+    match gp with
+    | controls.GroupPrefix.Letter ->
+        fun (name: string) offset -> if offset < name.Length then 1 else 0
+    | controls.GroupPrefix.Word ->
+        let inline scan (name: string) offset pred =
+            let mutable eo = offset
+            while eo < name.Length && pred name.[eo] do eo <- eo + 1
+            eo
+
+        fun (name: string) offset ->
+            if offset + 1 < name.Length then
+                let c1 = name.[offset]
+                let c2 = name.[offset + 1]
+
+                if Char.IsUpper(c1) then
+                    if Char.IsUpper(c2) then
+                        scan name (offset + 2) Char.IsUpper - offset
+                    elif Char.IsLower(c2) then
+                        scan name (offset + 2) Char.IsLower - offset
+                    else
+                        1
+                elif Char.IsLower(c1) then
+                    scan name (offset + 1) Char.IsLower - offset
+                else
+                    1
+            else
+                name.Length - offset
+    | _ ->
+        failwithf "Unknown type %O" gp
 
 let rebindToViewToken = ref (new Threading.CancellationTokenSource())
 
@@ -186,6 +225,7 @@ let updateFilterUI syms =
         item.Checked.Add(fun _ -> rebindToView syms)
         controls.filterSections.Items.Add(item) |> ignore
 
+    controls.groupPrefix.SelectionChanged.Add(fun _ -> rebindToView syms)
     controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView syms)
     
 let bindToViewAsync syms =
