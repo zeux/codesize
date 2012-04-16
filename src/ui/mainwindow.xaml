@@ -1,7 +1,6 @@
 ﻿<Window
        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
-       xmlns:r="clr-namespace:System.Windows.Controls.Ribbon;assembly=System.Windows.Controls.Ribbon"
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        Title="codesize" Height="300" Width="700">
     <Grid>
@@ -61,7 +60,7 @@
             <TabItem Name="TabLoading" Header="TabLoading" IsSelected="True" Visibility="Collapsed">
                 <Grid>
                     <StackPanel Orientation="Vertical" VerticalAlignment="Center">
-                        <Label Name="LabelLoading" Content="Loading..." HorizontalAlignment="Center" />
+                        <TextBlock Name="LabelLoading" Text="Loading..." HorizontalAlignment="Center" Padding="4,4,4,4" />
                         <ProgressBar HorizontalAlignment="Center" Height="20" Width="200" IsIndeterminate="True" />
                     </StackPanel>
                 </Grid>
@@ -72,7 +71,7 @@
         </TabControl>
         <StatusBar Grid.Row="2">
             <StatusBarItem>
-                <Label Name="LabelStatus" Content="" Padding="0,0,0,0" />
+                <TextBlock Name="LabelStatus" Text="" />
             </StatusBarItem>
         </StatusBar>
     </Grid>

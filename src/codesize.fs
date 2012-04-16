@@ -41,8 +41,8 @@ module controls =
     let tabControl = window?TabControl :?> TabControl
     let tabLoading = window?TabLoading :?> TabItem
     let tabTreeView = window?TabTreeView :?> TabItem
-    let labelLoading = window?LabelLoading :?> Label
-    let labelStatus = window?LabelStatus :?> Label
+    let labelLoading = window?LabelLoading :?> TextBlock
+    let labelStatus = window?LabelStatus :?> TextBlock
 
 let app = Application()
 let context = DispatcherSynchronizationContext(app.Dispatcher)
@@ -146,7 +146,7 @@ let rebindToView syms =
     rebindToViewToken.Value.Cancel()
     rebindToViewToken := new Threading.CancellationTokenSource()
 
-    controls.labelStatus.Content <- "Filtering..."
+    controls.labelStatus.Text <- "Filtering..."
 
     let token = rebindToViewToken.Value.Token
 
@@ -159,7 +159,7 @@ let rebindToView syms =
 
             do! Async.SwitchToContext context
             treeViewBinding.Update(fs, getSymbolText)
-            controls.labelStatus.Content <- ""
+            controls.labelStatus.Text <- ""
         with e -> ()
         }, token)
     
@@ -195,7 +195,7 @@ app.Startup.Add(fun _ ->
             else
                 exit 0
 
-    controls.labelLoading.Content <- sprintf "Loading %s..." path
+    controls.labelLoading.Text <- sprintf "Loading %s..." path
 
     async {
         let ess = ElfSymbolSource(path, fun key -> Map.find key config) :> ISymbolSource
