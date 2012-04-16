@@ -40,6 +40,18 @@
                 </Grid>
             </GroupBox>
         </Grid>
-        <TreeView Name="TreeView" Margin="0,0,0,0" Grid.Row="1" />
+        <TabControl Name="TabControl" Margin="0,0,0,0" Grid.Row="1">
+            <TabItem Name="TabLoading" Header="TabLoading" IsSelected="True" Visibility="Collapsed">
+                <Grid>
+                    <StackPanel Orientation="Vertical" VerticalAlignment="Center">
+                        <Label Name="LabelLoading" Content="Loading..." HorizontalAlignment="Center" />
+                        <ProgressBar HorizontalAlignment="Center" Height="20" Width="200" IsIndeterminate="True" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+            <TabItem Header="TabTreeView" Name="TabTreeView" Visibility="Collapsed">
+                <TreeView Name="TreeView" />
+            </TabItem>
+        </TabControl>
     </Grid>
 </Window>
