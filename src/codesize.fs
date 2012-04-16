@@ -56,7 +56,7 @@ let getFilterText typ (text: string) =
 let getFilterSymbol () =
     let ft = getFilterText controls.filterTextType.SelectedIndex controls.filterText.Text
     let fs =
-        match Int32.TryParse(controls.filterSize.Text) with
+        match UInt64.TryParse(controls.filterSize.Text) with
         | true, limit -> fun size -> size >= limit
         | _ -> fun size -> true
     let fg =
@@ -68,9 +68,12 @@ let getFilterSymbol () =
             |> set
         fun section -> Set.contains section sections
 
-    fun (size, section, name) -> ft name && fs size && fg section
+    fun (_, _, sym) -> ft sym.name && fs sym.size && fg sym.section
 
 let rebindToViewToken = ref (new Threading.CancellationTokenSource())
+
+let getSymbolText sym =
+    sym.name + (if sym.section = "" then "" else " [" + sym.section + "]")
 
 let rebindToView syms =
     let filter = getFilterSymbol ()
@@ -84,13 +87,11 @@ let rebindToView syms =
         try
             let fs = Array.filter (fun s -> token.ThrowIfCancellationRequested(); filter s) syms
             do! Async.SwitchToContext context
-            treeViewBinding.ItemsSource <- fs
+            treeViewBinding.Update(fs, getSymbolText)
         with e -> ()
         }, token)
     
 let bindToView syms =
-    treeViewBinding.ItemsSource <- syms
-
     controls.filterText.TextChanged.Add(fun _ -> rebindToView syms)
     controls.filterTextType.SelectionChanged.Add(fun _ -> rebindToView syms)
     controls.filterSize.TextChanged.Add(fun _ -> rebindToView syms)
@@ -99,12 +100,14 @@ let bindToView syms =
         if controls.filterSections.SelectedIndex >= 0 then
             controls.filterSections.SelectedIndex <- -1)
 
-    for section in syms |> Seq.map (fun (_, section, _) -> section) |> set do
+    for section in syms |> Seq.map (fun (_, _, sym) -> sym.section) |> set do
         let sectionName = if section = "" then "<other>" else section
         let item = CheckBox(Content = section, IsChecked = Nullable<bool>(true), Tag = section)
         item.Unchecked.Add(fun _ -> rebindToView syms)
         item.Checked.Add(fun _ -> rebindToView syms)
         controls.filterSections.Items.Add(item) |> ignore
+
+    treeViewBinding.Update(syms, getSymbolText)
 
 app.Startup.Add(fun _ ->
     let path =
@@ -122,7 +125,7 @@ app.Startup.Add(fun _ ->
 
     async {
         let ess = ElfSymbolSource(path, fun key -> Map.find key config) :> ISymbolSource
-        let symbols = ess.Symbols |> Seq.map (fun s -> int s.size, s.section, s.name) |> Seq.toArray
+        let symbols = ess.Symbols |> Seq.map (fun s -> int s.size, s.name, s) |> Seq.toArray
         do! Async.SwitchToContext context
         bindToView symbols
         controls.tabTreeView.IsSelected <- true

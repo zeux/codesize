@@ -41,37 +41,34 @@ let private groupByPrefix (pred: 'a -> string) data =
         first.Substring(0, !prefix), group |> Array.map snd)
 
 // convert the dump output to a tree of nodes
-let private getNodeText name group (size: int) =
-    name + (if group = "" then "" else " [" + group + "]") + size.ToString(" (#,0)")
-
-let private buildTreeItem name group size =
-    let text = getNodeText name group size
-    TreeViewItem(Header = text,
+let private buildTreeItem text (size: int) =
+    TreeViewItem(Header = text + size.ToString(" (#,0)"),
         HorizontalContentAlignment = HorizontalAlignment.Left, VerticalContentAlignment = VerticalAlignment.Center)
 
-let rec private buildTree items index =
+let rec private buildTree items (prefix: string) getText =
     // group by the first letter
-    let groups = groupByPrefix (fun (_, _, name: string) -> name.Substring(index)) items
+    let groups = groupByPrefix (fun (_, text: string, _) ->
+        assert (text.StartsWith(prefix))
+        text.Substring(prefix.Length)) items
 
     // convert to nodes
     let nodes = groups |> Array.map (fun (key, subitems) ->
         // standalone group?
         if subitems.Length = 1 then
-            let (size, group, name) = subitems.[0]
-            size, buildTreeItem name group size
+            let (size, _, item) = subitems.[0]
+            size, buildTreeItem (getText item) size
         else
-            let (_, _, first_name) = subitems.[0]
-            let name = first_name.Substring(0, index + key.Length)
+            let name = prefix + key
             let size = Array.sumBy (fun (size, _, _) -> size) subitems
             let subnodes =
                 lazy
-                if Array.forall (fun (_, _, name) -> name = first_name) subitems then
-                    Array.map (fun (size, group, name) -> buildTreeItem name group size) subitems
+                if Array.forall (fun (_, text, _) -> name = text) subitems then
+                    Array.map (fun (size, _, item) -> buildTreeItem (getText item) size) subitems
                 else
-                    buildTree subitems (index + key.Length)
+                    buildTree subitems name getText
 
-            let item = buildTreeItem name "" size
-            item.ItemsSource <- [|TreeViewItem()|]
+            let item = buildTreeItem name size
+            item.ItemsSource <- [|null|]
             item.Tag <- subnodes
 
             size, item)
@@ -92,7 +89,6 @@ type Binding(view: TreeView) =
                 item.ItemsSource <- subnodes
                 item.Tag <- null))
 
-    member this.ItemsSource
-        with set items =
-            let nodes = buildTree items 0
-            view.ItemsSource <- nodes
+    member this.Update(items, getText) =
+        let nodes = buildTree items "" getText
+        view.ItemsSource <- nodes
