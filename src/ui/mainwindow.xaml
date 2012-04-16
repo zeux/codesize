@@ -49,12 +49,12 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Prefix:" Grid.Row="0" Grid.Column="0"/>
-                    <ComboBox Name="GroupPrefix" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,0" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="0" Grid.Column="1">
+                    <ComboBox Name="GroupPrefix" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="0" Grid.Column="1">
                         <ComboBoxItem Content="Letter"/>
                         <ComboBoxItem Content="Word"/>
                     </ComboBox>
                     <TextBlock Text="Templates:" Grid.Row="1" Grid.Column="0"/>
-                    <ComboBox Name="GroupTemplates" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,0" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="1" Grid.Column="1">
+                    <ComboBox Name="GroupTemplates" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="1" Grid.Column="1">
                         <ComboBoxItem Content="None"/>
                         <ComboBoxItem Content="Merge all types"/>
                         <ComboBoxItem Content="Merge incompatible types"/>
