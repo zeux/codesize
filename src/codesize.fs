@@ -134,14 +134,18 @@ let getGroupSymbolFn () =
     | _ ->
         id
 
+let getPrefixSymbolFn () =
+    fun (name: string) -> if name.Length > 0 then 1 else 0
+
 let rebindToViewToken = ref (new Threading.CancellationTokenSource())
 
 let getSymbolText sym =
     sym.name + (if sym.section = "" then "" else " [" + sym.section + "]")
 
-let rebindToView syms =
+let rebindToViewAsync syms =
     let filter = getFilterSymbolFn ()
     let group = getGroupSymbolFn ()
+    let prefix = getPrefixSymbolFn ()
 
     rebindToViewToken.Value.Cancel()
     rebindToViewToken := new Threading.CancellationTokenSource()
@@ -150,7 +154,7 @@ let rebindToView syms =
 
     let token = rebindToViewToken.Value.Token
 
-    Async.Start(async {
+    async {
         try
             let fs =
                 syms
@@ -161,9 +165,12 @@ let rebindToView syms =
             treeViewBinding.Update(fs, getSymbolText)
             controls.labelStatus.Text <- ""
         with e -> ()
-        }, token)
+    }
     
-let bindToView syms =
+let rebindToView syms =
+    Async.Start(rebindToViewAsync syms, rebindToViewToken.Value.Token)
+
+let updateFilterUI syms =
     controls.filterText.TextChanged.Add(fun _ -> rebindToView syms)
     controls.filterTextType.SelectionChanged.Add(fun _ -> rebindToView syms)
     controls.filterSize.TextChanged.Add(fun _ -> rebindToView syms)
@@ -180,8 +187,13 @@ let bindToView syms =
         controls.filterSections.Items.Add(item) |> ignore
 
     controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView syms)
-
-    treeViewBinding.Update(syms |> Array.map (fun sym -> int sym.size, sym.name, sym), getSymbolText)
+    
+let bindToViewAsync syms =
+    async {
+        do! Async.SwitchToContext context
+        updateFilterUI syms
+        do! rebindToViewAsync syms
+    }
 
 window.Loaded.Add(fun _ ->
     let path =
@@ -200,8 +212,7 @@ window.Loaded.Add(fun _ ->
     async {
         let ess = ElfSymbolSource(path, fun key -> Map.find key config) :> ISymbolSource
         let symbols = ess.Symbols |> Seq.toArray
-        do! Async.SwitchToContext context
-        bindToView symbols
+        do! bindToViewAsync symbols
         controls.tabTreeView.IsSelected <- true
     } |> Async.Start)
 
