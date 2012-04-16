@@ -6,72 +6,75 @@ open System.Windows
 open System.Windows.Controls
 
 // group an array by equal string prefixes
-let private groupByPrefix (pred: 'a -> string) data =
-    // get keyed items
-    let items = data |> Array.map (fun i -> pred i, i)
+let private groupByPrefixSorted data offset getPrefixLength =
+    let inline prefix (_, text, _) offset = getPrefixLength text offset
+    let inline compare (_, text1, _) len1 (_, text2, _) len2 offset = len1 = len2 && String.Compare(text1, offset, text2, offset, len1) = 0
+    let rec forall rs re pred = if rs = re then true else pred rs && forall (rs + 1) re pred
 
-    // group by first letter
-    let groups = Dictionary<char, List<_>>()
+    let pls = data |> Array.map (fun d -> prefix d offset)
 
-    for item in items do
-        let key = fst item
-        let prefix = if key.Length > 0 then key.[0] else char 0
+    seq {
+        let start = ref 0
+        let rend = ref 0
 
-        match groups.TryGetValue(prefix) with
-        | true, lst -> lst.Add(item)
-        | _ ->
-            let lst = List<_>()
-            lst.Add(item)
-            groups.Add(prefix, lst)
+        while !start < data.Length do
+            // find a range of values with the same prefix
+            rend := !start + 1
 
-    // find largest prefix in each group
-    groups.Values
-    |> Seq.toArray
-    |> Array.map (fun lst ->
-        let group = lst.ToArray()
-        let first = fst group.[0]
+            while !rend < data.Length && compare data.[!start] pls.[!start] data.[!rend] pls.[!rend] offset do
+                incr rend
 
-        // find largest prefix in the group
-        let prefix = ref 0
+            // check if there is a larger common prefix
+            let rec findPrefix start rend offset =
+                let pn = prefix data.[start] offset
+                if pn > 0 && forall (start + 1) rend (fun i -> compare data.[start] pn data.[i] (prefix data.[i] offset) offset) then
+                    findPrefix start rend (offset + pn)
+                else
+                    offset
 
-        while first.Length > !prefix && group |> Array.forall (fun (key, _) -> key.Length > !prefix && key.[!prefix] = first.[!prefix]) do
-            incr prefix
+            let plength = findPrefix !start !rend (offset + pls.[!start]) - offset
 
-        // get prefix and all items
-        first.Substring(0, !prefix), group |> Array.map snd)
+            // yield prefix information
+            yield !start, !rend - !start, plength
+            start := !rend
+    }
 
 // convert the dump output to a tree of nodes
 let private buildTreeItem text (size: int) =
     TreeViewItem(Header = text + size.ToString(" (#,0)"),
         HorizontalContentAlignment = HorizontalAlignment.Left, VerticalContentAlignment = VerticalAlignment.Center)
 
-let rec private buildTree items (prefix: string) getText =
+let rec private buildTree items (prefix: string) getText getPrefixLength =
     // group by the first letter
-    let groups = groupByPrefix (fun (_, text: string, _) ->
-        assert (text.StartsWith(prefix))
-        text.Substring(prefix.Length)) items
+    let groups = groupByPrefixSorted items prefix.Length getPrefixLength
 
     // convert to nodes
-    let nodes = groups |> Array.map (fun (key, subitems) ->
-        // standalone group?
-        if subitems.Length = 1 then
-            let (size, _, item) = subitems.[0]
-            size, buildTreeItem (getText item) size
-        else
-            let name = prefix + key
-            let size = Array.sumBy (fun (size, _, _) -> size) subitems
-            let subnodes =
-                lazy
-                if Array.forall (fun (_, text, _) -> name = text) subitems then
-                    Array.map (fun (size, _, item) -> buildTreeItem (getText item) size) subitems
-                else
-                    buildTree subitems name getText
+    let nodes =
+        groups
+        |> Seq.map (fun (start, count, length) ->
+            // standalone group?
+            if count = 1 then
+                let (size, _, item) = items.[start]
+                size, buildTreeItem (getText item) size
+            else
+                let (_, text, _) = items.[start]
+                let name = prefix + text.Substring(prefix.Length, length)
 
-            let item = buildTreeItem name size
-            item.ItemsSource <- [|null|]
-            item.Tag <- subnodes
+                let subitems = items.[start..start+count-1]
+                let subnodes =
+                    lazy
+                    if Array.forall (fun (_, text, _) -> name = text) subitems then
+                        Array.map (fun (size, _, item) -> buildTreeItem (getText item) size) subitems
+                    else
+                        buildTree subitems name getText getPrefixLength
 
-            size, item)
+                let size = Array.sumBy (fun (size, _, _) -> size) subitems
+                let item = buildTreeItem name size
+                item.ItemsSource <- [|null|]
+                item.Tag <- subnodes
+
+                size, item)
+        |> Seq.toArray
 
     // return sorted nodes
     nodes
@@ -89,6 +92,7 @@ type Binding(view: TreeView) =
                 item.ItemsSource <- subnodes
                 item.Tag <- null))
 
-    member this.Update(items, getText) =
-        let nodes = buildTree items "" getText
+    member this.Update(data, getText, getPrefixLength) =
+        let items = data |> Array.sortBy (fun (_, text, _) -> text)
+        let nodes = buildTree items "" getText getPrefixLength
         view.ItemsSource <- nodes

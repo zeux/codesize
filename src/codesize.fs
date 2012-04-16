@@ -201,7 +201,7 @@ let rebindToViewAsync syms =
                 |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
 
             do! Async.SwitchToContext context
-            treeViewBinding.Update(fs, getSymbolText)
+            treeViewBinding.Update(fs, getSymbolText, prefix)
             controls.labelStatus.Text <- ""
         with e -> ()
     }
