@@ -183,7 +183,7 @@ let bindToView syms =
 
     treeViewBinding.Update(syms |> Array.map (fun sym -> int sym.size, sym.name, sym), getSymbolText)
 
-app.Startup.Add(fun _ ->
+window.Loaded.Add(fun _ ->
     let path =
         if Environment.GetCommandLineArgs().Length > 1 then
             Environment.GetCommandLineArgs().[1]
