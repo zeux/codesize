@@ -1,4 +1,5 @@
 open System
+open System.IO
 open System.Text
 open System.Text.RegularExpressions
 open System.Windows
@@ -18,6 +19,15 @@ let config =
      "tools/demangle/@path", exepath + @"\demangle.exe"
      "tools/objdump/@path", exepath + @"\objdump.exe"]
     |> Map.ofList
+
+let getSymbolSource path =
+    match Path.GetExtension(path).ToLower() with
+    | ".elf" ->
+        ElfSymbolSource(path, fun key -> Map.find key config) :> ISymbolSource
+    | ".self" ->
+        SelfSymbolSource(path, fun key -> Map.find key config) :> ISymbolSource
+    | e ->
+        failwithf "Unknown extension %s" e
 
 let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Relative)) :?> Window
 
@@ -240,7 +250,7 @@ window.Loaded.Add(fun _ ->
         if Environment.GetCommandLineArgs().Length > 1 then
             Environment.GetCommandLineArgs().[1]
         else
-            let dlg = OpenFileDialog(DefaultExt = ".elf", Filter = "ELF files (.elf)|*.elf")
+            let dlg = OpenFileDialog(Filter = "Executable files|*.elf;*.self")
             let res = dlg.ShowDialog(window)
             if res.HasValue && res.Value then
                 dlg.FileName
@@ -250,7 +260,7 @@ window.Loaded.Add(fun _ ->
     controls.labelLoading.Text <- sprintf "Loading %s..." path
 
     async {
-        let ess = ElfSymbolSource(path, fun key -> Map.find key config) :> ISymbolSource
+        let ess = getSymbolSource path
         let symbols = ess.Symbols |> Seq.toArray
         do! bindToViewAsync symbols
         controls.tabTreeView.IsSelected <- true
