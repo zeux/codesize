@@ -56,6 +56,10 @@
     <Compile Include="src\symbols\elfsymbolsource.fs" />
     <Compile Include="src\treeview.fs" />
     <Compile Include="src\codesize.fs" />
+    <Resource Include="src\ui\mainwindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Resource>
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
@@ -68,6 +72,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Windows.Controls.Ribbon" />
     <Reference Include="System.Xaml" />
     <Reference Include="WindowsBase" />
   </ItemGroup>

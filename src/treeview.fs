@@ -73,12 +73,8 @@ let rec private buildTree items index =
     |> Array.rev
     |> Array.map (fun (size, node) -> node)
 
-let bindToView (view: TreeView) data =
-    let items = data
-    let nodes = buildTree items 0
-    view.ItemsSource <- nodes
-
-    view.AddHandler(TreeViewItem.ExpandedEvent,
+type Binding(view: TreeView) =
+    do view.AddHandler(TreeViewItem.ExpandedEvent,
         RoutedEventHandler(fun _ e ->
             let item = e.OriginalSource :?> TreeViewItem
 
@@ -86,3 +82,8 @@ let bindToView (view: TreeView) data =
                 let subnodes = (item.Tag :?> TreeViewItem array Lazy).Force()
                 item.ItemsSource <- subnodes
                 item.Tag <- null))
+
+    member this.ItemsSource
+        with set items =
+            let nodes = buildTree items 0
+            view.ItemsSource <- nodes
