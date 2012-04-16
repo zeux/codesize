@@ -48,7 +48,7 @@ let getFilterText typ (text: string) =
     | _ ->
         fun name -> true
 
-let filterSymbols syms =
+let getFilterSymbol () =
     let ft = getFilterText filterTextType.SelectedIndex filterText.Text
     let fs =
         match Int32.TryParse(filterSize.Text) with
@@ -63,12 +63,25 @@ let filterSymbols syms =
             |> set
         fun section -> Set.contains section sections
 
-    syms
-    |> Array.filter (fun (size, section, name) -> ft name && fs size && fg section)
+    fun (size, section, name) -> ft name && fs size && fg section
+
+let rebindToViewToken = ref (new Threading.CancellationTokenSource())
 
 let rebindToView syms =
-    let fs = filterSymbols syms
-    treeViewBinding.ItemsSource <- fs
+    let filter = getFilterSymbol ()
+
+    rebindToViewToken.Value.Cancel()
+    rebindToViewToken := new Threading.CancellationTokenSource()
+
+    let token = rebindToViewToken.Value.Token
+
+    Async.Start(async {
+        try
+            let fs = Array.filter (fun s -> token.ThrowIfCancellationRequested(); filter s) syms
+            do! Async.SwitchToContext context
+            treeViewBinding.ItemsSource <- fs
+        with e -> ()
+        }, token)
     
 let bindToView syms =
     treeViewBinding.ItemsSource <- syms
@@ -77,9 +90,14 @@ let bindToView syms =
     filterTextType.SelectionChanged.Add(fun _ -> rebindToView syms)
     filterSize.TextChanged.Add(fun _ -> rebindToView syms)
 
+    filterSections.SelectionChanged.Add(fun _ ->
+        if filterSections.SelectedIndex >= 0 then
+            filterSections.SelectedIndex <- -1)
+
     for section in syms |> Seq.map (fun (_, section, _) -> section) |> set do
         let sectionName = if section = "" then "<other>" else section
         let item = CheckBox(Content = section, IsChecked = Nullable<bool>(true), Tag = section)
+        item.Unchecked.Add(fun _ -> rebindToView syms)
         item.Checked.Add(fun _ -> rebindToView syms)
         filterSections.Items.Add(item) |> ignore
 

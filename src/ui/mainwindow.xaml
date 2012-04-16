@@ -3,7 +3,7 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:r="clr-namespace:System.Windows.Controls.Ribbon;assembly=System.Windows.Controls.Ribbon"
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
-       Title="Main Window" Height="300" Width="602">
+       Title="codesize" Height="300" Width="600">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

@@ -44,6 +44,11 @@ let private groupByPrefix (pred: 'a -> string) data =
 let private getNodeText name group (size: int) =
     name + (if group = "" then "" else " [" + group + "]") + size.ToString(" (#,0)")
 
+let private buildTreeItem name group size =
+    let text = getNodeText name group size
+    TreeViewItem(Header = text,
+        HorizontalContentAlignment = HorizontalAlignment.Left, VerticalContentAlignment = VerticalAlignment.Center)
+
 let rec private buildTree items index =
     // group by the first letter
     let groups = groupByPrefix (fun (_, _, name: string) -> name.Substring(index)) items
@@ -53,7 +58,7 @@ let rec private buildTree items index =
         // standalone group?
         if subitems.Length = 1 then
             let (size, group, name) = subitems.[0]
-            size, TreeViewItem(Header = getNodeText name group size)
+            size, buildTreeItem name group size
         else
             let (_, _, first_name) = subitems.[0]
             let name = first_name.Substring(0, index + key.Length)
@@ -61,11 +66,15 @@ let rec private buildTree items index =
             let subnodes =
                 lazy
                 if Array.forall (fun (_, _, name) -> name = first_name) subitems then
-                    Array.map (fun (size, group, name) -> TreeViewItem(Header = getNodeText name group size)) subitems
+                    Array.map (fun (size, group, name) -> buildTreeItem name group size) subitems
                 else
                     buildTree subitems (index + key.Length)
 
-            size, TreeViewItem(Header = getNodeText name "" size, ItemsSource = [|TreeViewItem()|], Tag = subnodes))
+            let item = buildTreeItem name "" size
+            item.ItemsSource <- [|TreeViewItem()|]
+            item.Tag <- subnodes
+
+            size, item)
 
     // return sorted nodes
     nodes
