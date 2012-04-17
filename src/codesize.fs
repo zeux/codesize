@@ -191,6 +191,26 @@ let rebindToViewToken = ref (new Threading.CancellationTokenSource())
 let getSymbolText sym =
     sym.name + (if sym.section = "" then "" else " [" + sym.section + "]")
 
+let getStats syms =
+    // group symbols by section and find total size for each section
+    let sections =
+        syms
+        |> Seq.groupBy (fun sym -> sym.section)
+        |> Seq.map (fun (section, syms) -> section, syms |> Seq.sumBy (fun sym -> sym.size))
+        |> Seq.toArray
+
+    // get total size
+    let totalSize = sections |> Array.sumBy snd
+
+    // get section sizes
+    let sizes =
+        sections
+        |> Array.sortBy (fun (section, size) -> ~~~size)
+        |> Array.map (fun (section, size) -> (if section = "" then "other" else section) + size.ToString(": #,0"))
+
+    // statistics string
+    totalSize.ToString("#,0") + (if sections.Length = 0 then "" else " (" + String.concat ", " sizes + ")")
+
 let rebindToViewAsync syms =
     let filter = getFilterSymbolFn ()
     let group = getGroupSymbolFn ()
@@ -205,14 +225,14 @@ let rebindToViewAsync syms =
 
     async {
         try
-            let fs =
-                syms
-                |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
-                |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
+            let fs = syms |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
+            let stats = getStats fs
+            let items = fs |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
 
             do! Async.SwitchToContext context
-            treeViewBinding.Update(fs, getSymbolText, prefix)
-            controls.labelStatus.Text <- ""
+            treeViewBinding.Update(items, getSymbolText, prefix)
+
+            controls.labelStatus.Text <- "Total: " + stats
         with e -> ()
     }
     
