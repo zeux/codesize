@@ -1,36 +1,46 @@
 namespace Symbols
 
+#nowarn "9" // StructLayout produces 'Uses of this construct may result in the generation of unverifiable .NET IL code' warning
+
 open System
 open System.Collections.Generic
+open System.Runtime.InteropServices
 open System.Text.RegularExpressions
 
 module private binutils =
-    // parse nm output line
-    // 
-    // address section name
-    // address size section name
-    // address and size are 16-symbol hex strings
-    // section is a character
-    let parseNMLine (line: string) =
-        let inthex offset = Convert.ToUInt64(line.Substring(offset, 16), 16)
+    // binutils.dll interface
+    type BuFile = nativeint
+    type BuSymtab = nativeint
 
-        if line.Length > 0 && line.[0] = ' ' then
-            None
-        else if line.Length > 18 && line.[16] = ' ' && line.[18] = ' ' then
-            Some (inthex 0, 0UL, line.Substring(16, 1), line.Substring(19))
-        else if line.Length > 36 && line.[16] = ' ' && line.[33] = ' ' && line.[35] = ' ' then
-            Some (inthex 0, inthex 17, line.Substring(34, 1), line.Substring(36))
-        else
-            None
+    [<Struct; StructLayout(LayoutKind.Sequential)>]
+    type BuSymbol =
+        val address: uint64
+        val size: uint64
+        val typ: int
+        val name: nativeint
+
+    [<DllImport("binutils")>] extern BuFile buOpen(string path)
+    [<DllImport("binutils")>] extern void buClose(BuFile file)
+    [<DllImport("binutils")>] extern BuSymtab buSymtabOpen(BuFile file)
+    [<DllImport("binutils")>] extern void buSymtabClose(BuSymtab symtab)
+    [<DllImport("binutils")>] extern int buSymtabGetData(BuSymtab symtab, [<In; Out>] BuSymbol[] buffer, int bufferSize)
+
+    // auto-closing scope helper
+    type Scoped(value, deleter) =
+        interface IDisposable with
+            member this.Dispose() =
+                deleter value
+
+        member this.Value = value
 
     // convert section type to readable name
-    let getType typ =
+    let getSectionName typ =
         match typ with
-        | "t" | "T" -> "text"
-        | "d" | "D" -> "data"
-        | "r" | "R" -> "rodata"
-        | "b" | "B" -> "bss"
-        | _ -> failwithf "Unknown type %s" typ
+        | 't' | 'T' -> "text"
+        | 'd' | 'D' -> "data"
+        | 'r' | 'R' -> "rodata"
+        | 'b' | 'B' -> "bss"
+        | _ -> failwithf "Unknown type %c" typ
 
     // compute symbol sizes
     let fixSizes syms =
@@ -87,27 +97,26 @@ module private binutils =
 type ElfSymbolSource(path, configuration) =
     let symbols =
         lazy
-        // get symbol data (with mangled names)
+        use file = new binutils.Scoped(binutils.buOpen(path), binutils.buClose)
+        if file.Value = 0n then failwithf "Error opening file %s" path
+
         let data =
-            Process.popen (configuration "tools/nm/@path") (sprintf "--print-size %s" path)
-            |> Seq.choose binutils.parseNMLine
-            |> Seq.filter (fun (_, _, typ, name) -> "tTbBdDrR".IndexOf(typ) <> -1 && name.StartsWith(".LANCHOR") = false)
-            |> Seq.toArray
-            |> binutils.fixSizes
+            use symtab = new binutils.Scoped(binutils.buSymtabOpen(file.Value), binutils.buSymtabClose)
+            if symtab.Value = 0n then failwithf "Error reading symbols from file %s" path
 
-        // demangle names
-        let names =
+            let count = binutils.buSymtabGetData(symtab.Value, null, 0)
+            let data = Array.zeroCreate count
+
+            binutils.buSymtabGetData(symtab.Value, data, count) |> ignore
+
             data
-            |> Seq.map (fun (_, _, typ, name) -> name)
-            |> Seq.map (fun name ->
-                if name.EndsWith("$rodata") then name.Substring(0, name.Length - 7)
-                elif name.StartsWith(".") then name.Substring(1)
-                else name)
-            |> Process.popen2 (configuration "tools/demangle/@path") ""
+            |> Array.map (fun s -> s.address, s.size, (char s.typ), Marshal.PtrToStringAnsi(s.name))
 
-        // get symbols
-        Seq.map2 (fun (addr, size, typ, _) name ->
-            { address = addr; name = name; size = size; section = binutils.getType typ }) data names
+        data
+        |> Array.filter (fun (_, _, typ, name) -> "tTbBdDrR".IndexOf(typ) <> -1 && name.StartsWith("LANCHOR") = false)
+        |> binutils.fixSizes
+        |> Array.map (fun (address, size, typ, name) -> { address = address; size = size; section = binutils.getSectionName typ; name = name })
+        |> Array.toSeq
 
     let filelines =
         lazy
