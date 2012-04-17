@@ -1,12 +1,14 @@
 #include <stdint.h>
-#include <bfd.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <new>
 #include <memory>
 #include <vector>
 
+#include <bfd.h>
 #include "bfdext.h"
 
 #include "binutils.h"
@@ -136,9 +138,69 @@ struct BuSymtab
     }
 };
 
-BuFile* buOpen(const char* path)
+struct iovecStreamParams
 {
-    std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> file(bfd_openr(path, 0), bfd_close);
+    const char* filename;
+    int offset;
+};
+
+struct iovecStream
+{
+    FILE* fd;
+    int offset;
+    struct stat fstat;
+
+    iovecStream(FILE* fd, int offset, struct stat fstat): fd(fd), offset(offset), fstat(fstat)
+    {
+    }
+};
+
+void* iovecOpen(struct bfd *nbfd, void *open_closure)
+{
+    iovecStreamParams* p = static_cast<iovecStreamParams*>(open_closure);
+
+    struct stat fstat;
+    if (stat(p->filename, &fstat)) return 0;
+
+    if (fstat.st_size < p->offset) return 0;
+    fstat.st_size -= p->offset;
+
+    FILE* fd = fopen(p->filename, "rb");
+    if (!fd) return 0;
+
+    return new iovecStream(fd, p->offset, fstat);
+}
+
+file_ptr iovecRead(struct bfd *nbfd, void *stream, void *buf, file_ptr nbytes, file_ptr offset)
+{
+    iovecStream* s = static_cast<iovecStream*>(stream);
+
+    fseeko64(s->fd, offset + s->offset, SEEK_SET);
+
+    return fread(buf, 1, nbytes, s->fd);
+}
+
+int iovecClose(struct bfd *nbfd, void *stream)
+{
+    iovecStream* s = static_cast<iovecStream*>(stream);
+
+    fclose(s->fd);
+    delete s;
+}
+
+int iovecStat(struct bfd *abfd, void *stream, struct stat *sb)
+{
+    iovecStream* s = static_cast<iovecStream*>(stream);
+
+    *sb = s->fstat;
+    return 0;
+}
+
+BuFile* buOpen(const char* path, int offset)
+{
+    iovecStreamParams p = {path, offset};
+
+    std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> file(bfd_openr_iovec(path, 0, iovecOpen, &p, iovecRead, iovecClose, iovecStat), bfd_close);
     if (!file) return 0;
     if (!bfd_check_format(file.get(), bfd_object)) return 0;
 

@@ -19,7 +19,7 @@ module private binutils =
         val typ: int
         val name: nativeint
 
-    [<DllImport("binutils")>] extern BuFile buOpen(string path)
+    [<DllImport("binutils")>] extern BuFile buOpen(string path, int offset)
     [<DllImport("binutils")>] extern void buClose(BuFile file)
     [<DllImport("binutils")>] extern BuSymtab buSymtabOpen(BuFile file)
     [<DllImport("binutils")>] extern void buSymtabClose(BuSymtab symtab)
@@ -94,10 +94,10 @@ module private binutils =
                 else (addr, 0UL)
             addr, min size (symaddr + symsize - addr), file, line)
 
-type ElfSymbolSource(path, configuration) =
+type ElfSymbolSource(path, configuration, ?offset) =
     let symbols =
         lazy
-        use file = new binutils.Scoped(binutils.buOpen(path), binutils.buClose)
+        use file = new binutils.Scoped(binutils.buOpen(path, defaultArg offset 0), binutils.buClose)
         if file.Value = 0n then failwithf "Error opening file %s" path
 
         let data =
