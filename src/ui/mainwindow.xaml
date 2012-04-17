@@ -72,7 +72,7 @@
                 </Grid>
             </TabItem>
             <TabItem Header="TabTreeView" Name="TabTreeView" Visibility="Collapsed">
-                <TreeView Name="TreeView" />
+                <TreeView Name="TreeView" VirtualizingStackPanel.IsVirtualizing="True" />
             </TabItem>
         </TabControl>
         <StatusBar Grid.Row="2">
