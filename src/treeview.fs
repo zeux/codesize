@@ -6,38 +6,42 @@ open System.Windows
 open System.Windows.Controls
 
 // group an array by equal string prefixes
-let private groupByPrefixSorted data offset getPrefixLength =
-    let inline prefix (_, text, _) offset = getPrefixLength text offset
-    let inline compare (_, text1, _) len1 (_, text2, _) len2 offset = len1 = len2 && String.Compare(text1, offset, text2, offset, len1) = 0
-    let rec forall rs re pred = if rs = re then true else pred rs && forall (rs + 1) re pred
+let private groupByPrefix data offset getPrefixLength =
+    // group by first prefix
+    let groups = Dictionary<string, List<_>>()
 
-    let pls = data |> Array.map (fun d -> prefix d offset)
+    for (_, text: string, _) as item in data do
+        let prefix = text.Substring(offset, getPrefixLength text offset)
 
-    seq {
-        let start = ref 0
-        let rend = ref 0
+        match groups.TryGetValue(prefix) with
+        | true, lst -> lst.Add(item)
+        | _ ->
+            let lst = List<_>()
+            lst.Add(item)
+            groups.Add(prefix, lst)
 
-        while !start < data.Length do
-            // find a range of values with the same prefix
-            rend := !start + 1
+    // find largest prefix in each group
+    groups
+    |> Seq.toArray
+    |> Array.map (fun p ->
+        let prefix = p.Key
+        let group = p.Value.ToArray()
+        let (_, text, _) = group.[0]
 
-            while !rend < data.Length && compare data.[!start] pls.[!start] data.[!rend] pls.[!rend] offset do
-                incr rend
+        // find largest prefix in the group
+        let rec findPrefix offset =
+            let pn = getPrefixLength text offset
+            if pn > 0 && group |> Array.forall (fun (_, ti, _) ->
+                let pi = getPrefixLength ti offset
+                pi = pn && String.Compare(text, offset, ti, offset, pn) = 0) then
+                findPrefix (offset + pn)
+            else
+                offset
 
-            // check if there is a larger common prefix
-            let rec findPrefix start rend offset =
-                let pn = prefix data.[start] offset
-                if pn > 0 && forall (start + 1) rend (fun i -> compare data.[start] pn data.[i] (prefix data.[i] offset) offset) then
-                    findPrefix start rend (offset + pn)
-                else
-                    offset
+        let plength = findPrefix (offset + prefix.Length)
 
-            let plength = findPrefix !start !rend (offset + pls.[!start]) - offset
-
-            // yield prefix information
-            yield !start, !rend - !start, plength
-            start := !rend
-    }
+        // get prefix and all items
+        text.Substring(0, plength), group)
 
 // convert the dump output to a tree of nodes
 let private buildTreeItem text (size: int) =
@@ -45,22 +49,20 @@ let private buildTreeItem text (size: int) =
         HorizontalContentAlignment = HorizontalAlignment.Left, VerticalContentAlignment = VerticalAlignment.Center)
 
 let rec private buildTree items (prefix: string) getText getPrefixLength =
-    // group by the first letter
-    let groups = groupByPrefixSorted items prefix.Length getPrefixLength
+    // group by prefix
+    let groups = groupByPrefix items prefix.Length getPrefixLength
 
     // convert to nodes
     let nodes =
         groups
-        |> Seq.map (fun (start, count, length) ->
+        |> Array.map (fun (name, subitems) ->
             // standalone group?
-            if count = 1 then
-                let (size, _, item) = items.[start]
+            if subitems.Length = 1 then
+                let (size, _, item) = subitems.[0]
                 size, buildTreeItem (getText item) size
             else
-                let (_, text, _) = items.[start]
-                let name = prefix + text.Substring(prefix.Length, length)
+                let (_, text, _) = subitems.[0]
 
-                let subitems = items.[start..start+count-1]
                 let subnodes =
                     lazy
                     if Array.forall (fun (_, text, _) -> name = text) subitems then
@@ -74,7 +76,6 @@ let rec private buildTree items (prefix: string) getText getPrefixLength =
                 item.Tag <- subnodes
 
                 size, item)
-        |> Seq.toArray
 
     // return sorted nodes
     nodes
@@ -93,6 +94,5 @@ type Binding(view: TreeView) =
                 item.Tag <- null))
 
     member this.Update(data, getText, getPrefixLength) =
-        let items = data |> Array.sortBy (fun (_, text, _) -> text)
-        let nodes = buildTree items "" getText getPrefixLength
+        let nodes = buildTree data "" getText getPrefixLength
         view.ItemsSource <- nodes
