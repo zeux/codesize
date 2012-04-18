@@ -80,11 +80,11 @@ module private binutils =
     // fix the address/size pairs to make sure no pair overlaps a symbol
     let fixSizesSymBounds syms data =
         let symtab = syms |> Seq.toArray |> Array.sortBy fst
+        let symaddrs = symtab |> Array.map fst
 
         data
         |> Seq.map (fun (addr, size, file, line) ->
-            let key = (addr, UInt64.MaxValue)
-            let index = Array.BinarySearch(symtab, key)
+            let index = Array.BinarySearch(symaddrs, addr)
             let (symaddr, symsize) =
                 if index >= 0 then symtab.[index]
                 else if index <> -1 then symtab.[~~~index - 1]
