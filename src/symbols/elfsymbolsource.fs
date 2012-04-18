@@ -11,6 +11,7 @@ module private binutils =
     // binutils.dll interface
     type BuFile = nativeint
     type BuSymtab = nativeint
+    type BuLinetab = nativeint
 
     [<Struct; StructLayout(LayoutKind.Sequential)>]
     type BuSymbol =
@@ -19,11 +20,21 @@ module private binutils =
         val typ: int
         val name: nativeint
 
+    [<Struct; StructLayout(LayoutKind.Sequential)>]
+    type BuLine =
+        val address: uint64
+        val file: int
+        val line: int
+
     [<DllImport("binutils")>] extern BuFile buOpen(string path, int offset)
     [<DllImport("binutils")>] extern void buClose(BuFile file)
     [<DllImport("binutils")>] extern BuSymtab buSymtabOpen(BuFile file)
     [<DllImport("binutils")>] extern void buSymtabClose(BuSymtab symtab)
-    [<DllImport("binutils")>] extern int buSymtabGetData(BuSymtab symtab, [<In; Out>] BuSymbol[] buffer, int bufferSize)
+    [<DllImport("binutils")>] extern int buSymtabGetData(BuSymtab symtab, [<Out>] BuSymbol[] buffer, int bufferSize)
+    [<DllImport("binutils")>] extern BuLinetab buLinetabOpen(BuFile file)
+    [<DllImport("binutils")>] extern void buLinetabClose(BuLinetab linetab)
+    [<DllImport("binutils")>] extern int buLinetabGetFiles(BuLinetab linetab, [<Out>] nativeint[] buffer, int bufferSize)
+    [<DllImport("binutils")>] extern int buLinetabGetLines(BuLinetab linetab, [<Out>] BuLine[] buffer, int bufferSize)
 
     // auto-closing scope helper
     type Scoped(value, deleter) =
@@ -32,6 +43,16 @@ module private binutils =
                 deleter value
 
         member this.Value = value
+
+    // get variable sized array
+    let getArray pred ctx =
+        let count = pred(ctx, null, 0)
+        let data = Array.zeroCreate count
+
+        let result = pred(ctx, data, count)
+        assert (result = count)
+
+        data
 
     // convert section type to readable name
     let getSectionName typ =
@@ -55,30 +76,6 @@ module private binutils =
             |> Seq.toArray
 
         Array.append result (if symbols.Length > 0 then [| symbols.[symbols.Length - 1] |] else [||])
-
-    // parse debug_line dump
-    let parseDebugLines (lines: string seq) =
-        let file = ref ""
-        let re = Regex(@"^(.+?)\s+(\d+)\s+0x([a-f0-9]+)$")
-        let intern = Dictionary<string, string>()
-
-        seq {
-            for l in lines do
-                if l.EndsWith(":") then
-                    let path = l.Substring(0, l.Length - 1).ToLower()
-
-                    file :=
-                        let mutable value = null
-                        if intern.TryGetValue(path, &value) then
-                            value
-                        else
-                            intern.Add(path, path)
-                            path
-                else
-                    let m = re.Match(l)
-                    if m.Success then
-                        yield Convert.ToUInt64(m.Groups.[3].Value, 16), 1UL, !file, int m.Groups.[2].Value
-        }
 
     // fix the address/size pairs to make sure no pair overlaps a symbol
     let fixSizesSymBounds syms data =
@@ -104,12 +101,7 @@ type ElfSymbolSource(path, configuration, ?offset) =
             use symtab = new binutils.Scoped(binutils.buSymtabOpen(file.Value), binutils.buSymtabClose)
             if symtab.Value = 0n then failwithf "Error reading symbols from file %s" path
 
-            let count = binutils.buSymtabGetData(symtab.Value, null, 0)
-            let data = Array.zeroCreate count
-
-            binutils.buSymtabGetData(symtab.Value, data, count) |> ignore
-
-            data
+            binutils.getArray binutils.buSymtabGetData symtab.Value
             |> Array.map (fun s -> s.address, s.size, (char s.typ), Marshal.PtrToStringAnsi(s.name))
 
         data
@@ -120,10 +112,22 @@ type ElfSymbolSource(path, configuration, ?offset) =
 
     let filelines =
         lazy
+        use file = new binutils.Scoped(binutils.buOpen(path, defaultArg offset 0), binutils.buClose)
+        if file.Value = 0n then failwithf "Error opening file %s" path
+
+        let data =
+            use linetab = new binutils.Scoped(binutils.buLinetabOpen(file.Value), binutils.buLinetabClose)
+            if linetab.Value = 0n then failwithf "Error reading file/line data from file %s" path
+
+            let files =
+                binutils.getArray binutils.buLinetabGetFiles linetab.Value
+                |> Array.map Marshal.PtrToStringAnsi
+
+            binutils.getArray binutils.buLinetabGetLines linetab.Value
+            |> Array.map (fun l -> l.address, 1UL, files.[l.file], l.line)
+
         // get file/line info
-        Process.popen (configuration "tools/objdump/@path") (sprintf "--dwarf=decodedline %s" path)
-        |> binutils.parseDebugLines
-        |> Seq.toArray
+        data
         |> binutils.fixSizes
         |> binutils.fixSizesSymBounds (symbols.Value |> Seq.map (fun sym -> sym.address, sym.size))
         |> Seq.map (fun (addr, size, file, line) -> { address = addr; size = size; file = file; line = line })
