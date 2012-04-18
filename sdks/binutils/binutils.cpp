@@ -282,7 +282,12 @@ BuLinetab* buLinetabOpen(BuFile* file)
     std::vector<std::string> files(vm.pathcache.size());
 
     for (auto& p: vm.pathcache)
-        files[p.second] = std::move(p.first);
+    {
+        assert(p.second > 0);
+
+        // not sure why moving the map key compiles, but it's for the best since it saves reallocations
+        files[p.second - 1] = std::move(p.first);
+    }
 
     return new BuLinetab(std::move(files), std::move(vm.lines));
 }
