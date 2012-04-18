@@ -2,16 +2,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <sys/stat.h>
 
 #include <new>
 #include <memory>
 #include <vector>
+#include <string>
+#include <map>
 
 #include <bfd.h>
 #include "bfdext.h"
 
 #include "binutils.h"
+#include "decodedline.h"
 
 // Symbol extraction
 bool keepSymbol(bfd* f, asymbol* sym)
@@ -24,34 +28,10 @@ bool keepSymbol(bfd* f, asymbol* sym)
 
 struct BuSymbolOwn: BuSymbol
 {
-    BuSymbolOwn(const BuSymbolOwn&) = delete;
-    BuSymbolOwn& operator=(const BuSymbolOwn&) = delete;
+    std::unique_ptr<char, void (*)(void*)> namestorage;
 
-    BuSymbolOwn()
+    BuSymbolOwn(): namestorage(0, free)
     {
-        name = 0;
-    }
-    
-    ~BuSymbolOwn()
-    {
-        free(name);
-    }
-
-    BuSymbolOwn(BuSymbolOwn&& other)
-    {
-        name = 0;
-        *this = std::move(other);
-    }
-
-    BuSymbolOwn& operator=(BuSymbolOwn&& other)
-    {
-        free(name);
-
-        address = other.address;
-        size = other.size;
-        type = other.type;
-        name = other.name;
-        other.name = 0;
     }
 };
 
@@ -105,12 +85,16 @@ std::vector<BuSymbolOwn> getSymbols(bfd* f)
             symbol_info info;
             bfd_get_symbol_info(f, sym, &info);
 
+            char* name = getDemangledName(f, info.name);
+
             BuSymbolOwn s;
             s.address = info.value;
             s.size = elf ? reinterpret_cast<elf_symbol_type*>(sym)->internal_elf_sym.st_size : 0;
 
             s.type = info.type;
-            s.name = getDemangledName(f, info.name);
+            s.name = name;
+
+            s.namestorage.reset(name);
 
             result.push_back(std::move(s));
         }
@@ -118,6 +102,52 @@ std::vector<BuSymbolOwn> getSymbols(bfd* f)
 
     return std::move(result);
 }
+
+// File/line extraction
+struct DecodedLineVMExtractor: DecodedLineVM
+{
+    std::vector<std::string> dirtab;
+    std::vector<unsigned int> filetab;
+
+    std::map<std::string, unsigned int> pathcache;
+
+    std::vector<BuLine> lines;
+
+    virtual void resetTables()
+    {
+        dirtab.clear();
+        filetab.clear();
+    }
+
+    virtual void addDirectory(const char* path)
+    {
+        dirtab.push_back(path);
+    }
+
+    virtual void addFile(unsigned int directory, const char* name)
+    {
+        assert(directory < dirtab.size());
+
+        std::string path = dirtab[directory] + "/" + name;
+        unsigned int& pci = pathcache[path];
+
+        if (pci == 0) pci = pathcache.size();
+
+        filetab.push_back(pci);
+    }
+
+    virtual void addLine(unsigned int file, unsigned int line, uint64_t address)
+    {
+        assert(file < filetab.size());
+
+        BuLine l;
+        l.address = address;
+        l.file = filetab[file];
+        l.line = line;
+
+        lines.push_back(l);
+    }
+};
 
 // DLL implementation
 struct BuFile
@@ -134,6 +164,16 @@ struct BuSymtab
     std::vector<BuSymbolOwn> symbols;
 
     BuSymtab(std::vector<BuSymbolOwn> symbols): symbols(std::move(symbols))
+    {
+    }
+};
+
+struct BuLinetab
+{
+    std::vector<std::string> files;
+    std::vector<BuLine> lines;
+
+    BuLinetab(std::vector<std::string> files, std::vector<BuLine> lines): files(std::move(files)), lines(std::move(lines))
     {
     }
 };
@@ -186,6 +226,8 @@ int iovecClose(struct bfd *nbfd, void *stream)
 
     fclose(s->fd);
     delete s;
+
+    return 0;
 }
 
 int iovecStat(struct bfd *abfd, void *stream, struct stat *sb)
@@ -221,10 +263,6 @@ BuSymtab* buSymtabOpen(BuFile* file)
 
 unsigned int buSymtabGetData(BuSymtab* symtab, BuSymbol* buffer, unsigned int bufferSize)
 {
-    memset(buffer, 0, sizeof(BuSymbol) * bufferSize);
-
-    if (!symtab) return 0;
-
     for (unsigned int i = 0; i < bufferSize && i < symtab->symbols.size(); ++i)
         buffer[i] = symtab->symbols[i];
 
@@ -236,3 +274,36 @@ void buSymtabClose(BuSymtab* symtab)
     delete symtab;
 }
 
+BuLinetab* buLinetabOpen(BuFile* file)
+{
+    DecodedLineVMExtractor vm;
+    if (!decodedLineProcess(file->file.get(), &vm)) return 0;
+
+    std::vector<std::string> files(vm.pathcache.size());
+
+    for (auto& p: vm.pathcache)
+        files[p.second] = std::move(p.first);
+
+    return new BuLinetab(std::move(files), std::move(vm.lines));
+}
+
+void buLinetabClose(BuLinetab* linetab)
+{
+    delete linetab;
+}
+
+API unsigned int buLinetabGetFiles(BuLinetab* linetab, const char** buffer, unsigned int bufferSize)
+{
+    for (unsigned int i = 0; i < bufferSize && i < linetab->files.size(); ++i)
+        buffer[i] = linetab->files[i].c_str();
+
+    return linetab->files.size();
+}
+
+API unsigned int buLinetabGetLines(BuLinetab* linetab, BuLine* buffer, unsigned int bufferSize)
+{
+    for (unsigned int i = 0; i < bufferSize && i < linetab->lines.size(); ++i)
+        buffer[i] = linetab->lines[i];
+
+    return linetab->lines.size();
+}

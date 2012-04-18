@@ -15,14 +15,27 @@ struct BuSymtab;
 API BuSymtab* buSymtabOpen(BuFile* file);
 API void buSymtabClose(BuSymtab* symtab);
 
-struct BuSymbol;
-
-API unsigned int buSymtabGetData(BuSymtab* symtab, BuSymbol* buffer, unsigned int bufferSize);
-
 struct BuSymbol
 {
     uint64_t address;
     uint64_t size;
     int type;
-    char* name;
+    const char* name;
 };
+
+API unsigned int buSymtabGetData(BuSymtab* symtab, BuSymbol* buffer, unsigned int bufferSize);
+
+struct BuLinetab;
+
+API BuLinetab* buLinetabOpen(BuFile* file);
+API void buLinetabClose(BuLinetab* linetab);
+
+struct BuLine
+{
+    uint64_t address;
+    unsigned int file;
+    unsigned int line;
+};
+
+API unsigned int buLinetabGetFiles(BuLinetab* linetab, const char** buffer, unsigned int bufferSize);
+API unsigned int buLinetabGetLines(BuLinetab* linetab, BuLine* buffer, unsigned int bufferSize);
