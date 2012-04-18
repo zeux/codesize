@@ -91,7 +91,7 @@ module private binutils =
                 else (addr, 0UL)
             addr, min size (symaddr + symsize - addr), file, line)
 
-type ElfSymbolSource(path, configuration, ?offset) =
+type ElfSymbolSource(path, ?offset) =
     let symbols =
         lazy
         use file = new binutils.Scoped(binutils.buOpen(path, defaultArg offset 0), binutils.buClose)

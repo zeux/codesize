@@ -13,19 +13,12 @@ open Symbols
 
 let (?) (e: FrameworkElement) (name: string) = e.FindName name
 
-let exepath = AppDomain.CurrentDomain.BaseDirectory
-let config =
-    ["tools/nm/@path", exepath + @"\nm.exe"
-     "tools/demangle/@path", exepath + @"\demangle.exe"
-     "tools/objdump/@path", exepath + @"\objdump.exe"]
-    |> Map.ofList
-
 let getSymbolSource path =
     match Path.GetExtension(path).ToLower() with
     | ".elf" ->
-        ElfSymbolSource(path, fun key -> Map.find key config) :> ISymbolSource
+        ElfSymbolSource(path) :> ISymbolSource
     | ".self" ->
-        SelfSymbolSource(path, fun key -> Map.find key config) :> ISymbolSource
+        SelfSymbolSource(path) :> ISymbolSource
     | e ->
         failwithf "Unknown extension %s" e
 
