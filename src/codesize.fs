@@ -4,7 +4,6 @@ open System.Text
 open System.Text.RegularExpressions
 open System.Windows
 open System.Windows.Controls
-open System.Windows.Threading
 open Microsoft.Win32
 
 open Symbols
@@ -57,7 +56,6 @@ module controls =
     let symbolAddress = window?SymbolAddress :?> TextBox
 
 let app = Application()
-let context = DispatcherSynchronizationContext(app.Dispatcher)
 
 let treeViewBinding = TreeView.Binding(controls.treeView)
 
@@ -183,8 +181,6 @@ let getPrefixSymbolFn () =
     | _ ->
         failwithf "Unknown type %O" gp
 
-let rebindToViewToken = ref (new Threading.CancellationTokenSource())
-
 let getSymbolText sym =
     sym.name + (if sym.section = "" then "" else " [" + sym.section + "]")
 
@@ -208,25 +204,27 @@ let getStats syms =
     // statistics string
     totalSize.ToString("#,0") + (if sections.Length = 0 then "" else " (" + String.concat ", " sizes + ")")
 
+let rebindToViewAgent = AsyncUI.SingleUpdateAgent()
+
 let rebindToViewAsync syms =
-    let filter = getFilterSymbolFn ()
-    let group = getGroupSymbolFn ()
-    let prefix = getPrefixSymbolFn ()
-
-    rebindToViewToken.Value.Cancel()
-    rebindToViewToken := new Threading.CancellationTokenSource()
-
-    controls.labelStatus.Text <- "Filtering..."
-
-    let token = rebindToViewToken.Value.Token
-
     async {
+        do! AsyncUI.switchToUI ()
+
+        let filter = getFilterSymbolFn ()
+        let group = getGroupSymbolFn ()
+        let prefix = getPrefixSymbolFn ()
+
+        controls.labelStatus.Text <- "Filtering..."
+
         try
+            do! AsyncUI.switchToWork ()
+
+            let! token = Async.CancellationToken
             let fs = syms |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
             let stats = getStats fs
             let items = fs |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
 
-            do! Async.SwitchToContext context
+            do! AsyncUI.switchToUI ()
             treeViewBinding.Update(items, getSymbolText, prefix)
 
             controls.labelStatus.Text <- "Total: " + stats
@@ -234,7 +232,7 @@ let rebindToViewAsync syms =
     }
     
 let rebindToView syms =
-    Async.Start(rebindToViewAsync syms, rebindToViewToken.Value.Token)
+    rebindToViewAgent.Post(rebindToViewAsync syms)
 
 let updateFilterUI syms =
     controls.filterText.TextChanged.Add(fun _ -> rebindToView syms)
@@ -255,6 +253,8 @@ let updateFilterUI syms =
     controls.groupPrefix.SelectionChanged.Add(fun _ -> rebindToView syms)
     controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView syms)
 
+let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
+
 let updateSymbolUI (ess: ISymbolSource) =
     controls.treeView.SelectedItemChanged.Add(fun _ ->
         let item = (controls.treeView.SelectedItem :?> TreeViewItem)
@@ -263,12 +263,19 @@ let updateSymbolUI (ess: ISymbolSource) =
         match tag with
         | :? Symbols.Symbol as sym ->
             controls.symbolName.Text <- sym.name
-            controls.symbolLocation.Text <-
-                match ess.GetFileLine sym.address with
-                | Some (file, line) -> sprintf "%s(%d)" file line
-                | None -> "unknown"
-            controls.symbolSize.Text <- sym.size.ToString("#,0")
+            controls.symbolLocation.Text <- "..."
             controls.symbolAddress.Text <- "0x" + sym.address.ToString("x")
+            controls.symbolSize.Text <- sym.size.ToString("#,0")
+
+            async {
+                do! AsyncUI.switchToWork ()
+                let text =
+                    match ess.GetFileLine sym.address with
+                    | Some (file, line) -> sprintf "%s (%d)" file line
+                    | None -> "unknown"
+                do! AsyncUI.switchToUI ()
+                controls.symbolLocation.Text <- text
+            } |> updateSymbolLocationAgent.Post
         | _ ->
             controls.symbolName.Text <- ""
             controls.symbolLocation.Text <- ""
@@ -279,7 +286,7 @@ let bindToViewAsync (ess: ISymbolSource) =
     async {
         let symbols = ess.Symbols |> Seq.toArray
 
-        do! Async.SwitchToContext context
+        do! AsyncUI.switchToUI ()
         updateFilterUI symbols
         updateSymbolUI ess
 

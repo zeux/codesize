@@ -46,6 +46,7 @@
     <Compile Include="src\symbols\symbol.fs" />
     <Compile Include="src\symbols\elfsymbolsource.fs" />
     <Compile Include="src\symbols\selfsymbolsource.fs" />
+    <Compile Include="src\asyncui.fs" />
     <Compile Include="src\treeview.fs" />
     <Compile Include="src\codesize.fs" />
     <Resource Include="src\ui\mainwindow.xaml">
