@@ -257,15 +257,10 @@ let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
 
 let editor = lazy Editor.Window()
 
-let openEditor (file, line) =
-    let editor = editor.Value
-    editor.Load(file, line)
-    editor.Window.Show()
-
 let updateSymbolUI (ess: ISymbolSource) =
     controls.symbolLocationLink.Click.Add(fun _ ->
         match controls.symbolLocationLink.Tag with
-        | :? (string * int) as fl -> openEditor fl
+        | :? (string * int) as fl -> editor.Value.Open(fst fl, snd fl)
         | _ -> ())
     
     controls.treeView.SelectedItemChanged.Add(fun _ ->
