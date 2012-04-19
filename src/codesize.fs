@@ -11,8 +11,6 @@ open Symbols
 
 [<STAThread>] do ()
 
-let (?) (e: FrameworkElement) (name: string) = e.FindName name
-
 let getSymbolSource path =
     match Path.GetExtension(path).ToLower() with
     | ".elf" ->
@@ -257,36 +255,15 @@ let updateFilterUI syms =
 
 let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
 
-type HighlightLineBackgroundRenderer(editor: ICSharpCode.AvalonEdit.TextEditor, line) =
-    interface ICSharpCode.AvalonEdit.Rendering.IBackgroundRenderer with
-        member this.Layer = ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background
-        member this.Draw(textView, drawingContext) =
-            textView.EnsureVisualLines()
+let editor = lazy Editor.Window()
 
-            let cline = editor.Document.GetLineByNumber(line)
-            let rects = ICSharpCode.AvalonEdit.Rendering.BackgroundGeometryBuilder.GetRectsForSegment(textView, cline)
-
-            for rect in rects do
-                drawingContext.DrawRectangle(
-                    System.Windows.Media.Brushes.LightSteelBlue, null,
-                    Rect(rect.Location, Size(textView.ActualWidth, rect.Height)))
-
-let openEditor (file: string, line) =
-    try
-        let editor = ICSharpCode.AvalonEdit.TextEditor()
-        editor.Load(file)
-        editor.SyntaxHighlighting <- ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance.GetDefinition("C++")
-        editor.ShowLineNumbers <- true
-        editor.IsReadOnly <- true
-
-        editor.Loaded.Add(fun _ -> editor.ScrollToLine(line))
-        editor.TextArea.TextView.BackgroundRenderers.Add(HighlightLineBackgroundRenderer(editor, line) :> ICSharpCode.AvalonEdit.Rendering.IBackgroundRenderer)
-
-        Window(Title = file, Content = editor).Show()
-    with _ -> ()
+let openEditor (file, line) =
+    let editor = editor.Value
+    editor.Load(file, line)
+    editor.Window.Show()
 
 let updateSymbolUI (ess: ISymbolSource) =
-    controls.symbolLocationLink.RequestNavigate.Add(fun _ ->
+    controls.symbolLocationLink.Click.Add(fun _ ->
         match controls.symbolLocationLink.Tag with
         | :? (string * int) as fl -> openEditor fl
         | _ -> ())
@@ -321,6 +298,7 @@ let updateSymbolUI (ess: ISymbolSource) =
         | _ ->
             controls.symbolName.Text <- ""
             controls.symbolLocation.Text <- ""
+            controls.symbolLocationLink.Tag <- null
             controls.symbolSize.Text <- ""
             controls.symbolAddress.Text <- "")
 
