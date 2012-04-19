@@ -111,7 +111,8 @@ type ElfSymbolSource(path, ?offset) =
         data
         |> Array.filter (fun (_, _, typ, name) -> "tTbBdDrR".IndexOf(typ) <> -1 && name.StartsWith("LANCHOR") = false)
         |> binutils.fixSizes
-        |> Array.map (fun (address, size, typ, name) -> { address = address; size = size; section = binutils.getSectionName typ; name = name })
+        |> Array.map (fun (address, size, typ, name) ->
+            { address = address; size = size; section = binutils.getSectionName typ; name = name })
 
     let filelines =
         lazy
@@ -148,7 +149,7 @@ type ElfSymbolSource(path, ?offset) =
             let mutable filename = null
             let mutable line = 0
 
-            if binutils.buGetFileLine(file, address, &filename, &line) then
+            if binutils.buGetFileLine(file, address, &filename, &line) && filename <> null && line > 0 then
                 Some (filename, line)
             else
                 None
