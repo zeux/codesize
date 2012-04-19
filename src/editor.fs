@@ -8,7 +8,15 @@ open System.Windows.Media
 open ICSharpCode.AvalonEdit
 open ICSharpCode.AvalonEdit.Rendering
 
-type HighlightLineBackgroundRenderer(editor: TextEditor, lineRange) =
+type HighlightLineBackgroundRenderer(editor: TextEditor) as this =
+    let mutable lineRange = 0, 0
+
+    do editor.TextArea.TextView.BackgroundRenderers.Add(this :> IBackgroundRenderer)
+
+    member this.LineRange
+        with get () = lineRange
+         and set v = lineRange <- v
+    
     interface IBackgroundRenderer with
         member this.Layer = KnownLayer.Background
         member this.Draw(textView, drawingContext) =
@@ -27,6 +35,9 @@ type HighlightLineBackgroundRenderer(editor: TextEditor, lineRange) =
 type Window() as this =
     let window = Application.LoadComponent(Uri("src/ui/editor.xaml", UriKind.Relative)) :?> System.Windows.Window
     let editor = window?TextEditor :?> TextEditor
+
+    let hlRenderer = HighlightLineBackgroundRenderer(editor)
+
     let scrollLine = ref 1
 
     do
@@ -50,9 +61,7 @@ type Window() as this =
         editor.Load(file)
         editor.ScrollToLine(line)
 
-        let hlRenderer = HighlightLineBackgroundRenderer(editor, defaultArg highlightRange (line, line))
-        editor.TextArea.TextView.BackgroundRenderers.Clear()
-        editor.TextArea.TextView.BackgroundRenderers.Add(hlRenderer :> IBackgroundRenderer)
+        hlRenderer.LineRange <- defaultArg highlightRange (line, line)
 
         window.Show()
 

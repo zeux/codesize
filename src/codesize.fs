@@ -270,7 +270,7 @@ let updateSymbolUI (ess: ISymbolSource) =
         match tag with
         | :? Symbols.Symbol as sym ->
             controls.symbolName.Text <- sym.name
-            controls.symbolLocation.Text <- "..."
+            controls.symbolLocation.Text <- "resolving..."
             controls.symbolLocationLink.Tag <- null
             controls.symbolAddress.Text <- "0x" + sym.address.ToString("x")
             controls.symbolSize.Text <- sym.size.ToString("#,0")
