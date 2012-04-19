@@ -28,9 +28,11 @@ module private binutils =
 
     [<DllImport("binutils")>] extern BuFile buOpen(string path, int offset)
     [<DllImport("binutils")>] extern void buClose(BuFile file)
+
     [<DllImport("binutils")>] extern BuSymtab buSymtabOpen(BuFile file)
     [<DllImport("binutils")>] extern void buSymtabClose(BuSymtab symtab)
     [<DllImport("binutils")>] extern int buSymtabGetData(BuSymtab symtab, [<Out>] BuSymbol[] buffer, int bufferSize)
+
     [<DllImport("binutils")>] extern BuLinetab buLinetabOpen(BuFile file)
     [<DllImport("binutils")>] extern void buLinetabClose(BuLinetab linetab)
     [<DllImport("binutils")>] extern int buLinetabGetFiles(BuLinetab linetab, [<Out>] nativeint[] buffer, int bufferSize)
@@ -79,11 +81,11 @@ module private binutils =
 
     // fix the address/size pairs to make sure no pair overlaps a symbol
     let fixSizesSymBounds syms data =
-        let symtab = syms |> Seq.toArray |> Array.sortBy fst
+        let symtab = syms |> Array.sortBy fst
         let symaddrs = symtab |> Array.map fst
 
         data
-        |> Seq.map (fun (addr, size, file, line) ->
+        |> Array.map (fun (addr, size, file, line) ->
             let index = Array.BinarySearch(symaddrs, addr)
             let (symaddr, symsize) =
                 if index >= 0 then symtab.[index]
@@ -108,7 +110,6 @@ type ElfSymbolSource(path, ?offset) =
         |> Array.filter (fun (_, _, typ, name) -> "tTbBdDrR".IndexOf(typ) <> -1 && name.StartsWith("LANCHOR") = false)
         |> binutils.fixSizes
         |> Array.map (fun (address, size, typ, name) -> { address = address; size = size; section = binutils.getSectionName typ; name = name })
-        |> Array.toSeq
 
     let filelines =
         lazy
@@ -129,9 +130,9 @@ type ElfSymbolSource(path, ?offset) =
         // get file/line info
         data
         |> binutils.fixSizes
-        |> binutils.fixSizesSymBounds (symbols.Value |> Seq.map (fun sym -> sym.address, sym.size))
-        |> Seq.map (fun (addr, size, file, line) -> { address = addr; size = size; file = file; line = line })
+        |> binutils.fixSizesSymBounds (symbols.Value |> Array.map (fun sym -> sym.address, sym.size))
+        |> Array.map (fun (addr, size, file, line) -> { address = addr; size = size; file = file; line = line })
 
     interface ISymbolSource with
-        member this.Symbols = symbols.Value
-        member this.FileLines = filelines.Value
+        member this.Symbols = symbols.Value |> Array.toSeq
+        member this.FileLines = filelines.Value |> Array.toSeq
