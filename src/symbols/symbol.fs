@@ -16,3 +16,5 @@ type FileLine =
 type ISymbolSource =
     abstract member Symbols: seq<Symbol>
     abstract member FileLines: seq<FileLine>
+
+    abstract member GetFileLine: uint64 -> (string * int) option

@@ -14,3 +14,4 @@ type SelfSymbolSource(path) =
     interface ISymbolSource with
         member this.Symbols = ess.Symbols
         member this.FileLines = ess.FileLines
+        member this.GetFileLine address = ess.GetFileLine address

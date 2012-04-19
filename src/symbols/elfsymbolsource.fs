@@ -136,3 +136,4 @@ type ElfSymbolSource(path, ?offset) =
     interface ISymbolSource with
         member this.Symbols = symbols.Value |> Array.toSeq
         member this.FileLines = filelines.Value |> Array.toSeq
+        member this.GetFileLine address = None
