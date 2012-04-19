@@ -44,9 +44,12 @@ let private groupByPrefix data offset getPrefixLength =
         text.Substring(0, plength), group)
 
 // convert the dump output to a tree of nodes
-let private buildTreeItem text (size: int) =
-    TreeViewItem(Header = text + size.ToString(" (#,0)"),
-        HorizontalContentAlignment = HorizontalAlignment.Left, VerticalContentAlignment = VerticalAlignment.Center)
+let private buildTreeItem text (size: int) tag =
+    TreeViewItem(
+        Header = text + size.ToString(" (#,0)"),
+        Tag = box tag,
+        HorizontalContentAlignment = HorizontalAlignment.Left,
+        VerticalContentAlignment = VerticalAlignment.Center)
 
 let rec private buildTree items (prefix: string) getText getPrefixLength =
     // group by prefix
@@ -59,21 +62,20 @@ let rec private buildTree items (prefix: string) getText getPrefixLength =
             // standalone group?
             if subitems.Length = 1 then
                 let (size, _, item) = subitems.[0]
-                size, buildTreeItem (getText item) size
+                size, buildTreeItem (getText item) size item
             else
                 let (_, text, _) = subitems.[0]
 
                 let subnodes =
                     lazy
                     if Array.forall (fun (_, text, _) -> name = text) subitems then
-                        Array.map (fun (size, _, item) -> buildTreeItem (getText item) size) subitems
+                        Array.map (fun (size, _, item) -> buildTreeItem (getText item) size item) subitems
                     else
                         buildTree subitems name getText getPrefixLength
 
                 let size = Array.sumBy (fun (size, _, _) -> size) subitems
-                let item = buildTreeItem name size
+                let item = buildTreeItem name size subnodes
                 item.ItemsSource <- [|null|]
-                item.Tag <- subnodes
 
                 size, item)
 
@@ -88,10 +90,11 @@ type Binding(view: TreeView) =
         RoutedEventHandler(fun _ e ->
             let item = e.OriginalSource :?> TreeViewItem
 
-            if item.Tag <> null then
-                let subnodes = (item.Tag :?> TreeViewItem array Lazy).Force()
-                item.ItemsSource <- subnodes
-                item.Tag <- null))
+            match item.Tag with
+            | :? Lazy<TreeViewItem[]> as t ->
+                item.ItemsSource <- t.Value
+                item.Tag <- null
+            | _ -> ()))
 
     member this.Update(data, getText, getPrefixLength) =
         let nodes = buildTree data "" getText getPrefixLength

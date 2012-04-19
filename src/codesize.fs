@@ -51,6 +51,10 @@ module controls =
     let tabTreeView = window?TabTreeView :?> TabItem
     let labelLoading = window?LabelLoading :?> TextBlock
     let labelStatus = window?LabelStatus :?> TextBlock
+    let symbolName = window?SymbolName :?> TextBox
+    let symbolLocation = window?SymbolLocation :?> TextBox
+    let symbolSize = window?SymbolSize :?> TextBox
+    let symbolAddress = window?SymbolAddress :?> TextBox
 
 let app = Application()
 let context = DispatcherSynchronizationContext(app.Dispatcher)
@@ -250,11 +254,27 @@ let updateFilterUI syms =
 
     controls.groupPrefix.SelectionChanged.Add(fun _ -> rebindToView syms)
     controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView syms)
-    
+
+let updateSymbolUI () =
+    controls.treeView.SelectedItemChanged.Add(fun _ ->
+        let item = (controls.treeView.SelectedItem :?> TreeViewItem)
+        match item.Tag with
+        | :? Symbols.Symbol as sym ->
+            controls.symbolName.Text <- sym.name
+            controls.symbolLocation.Text <- ""
+            controls.symbolSize.Text <- sym.size.ToString("#,0")
+            controls.symbolAddress.Text <- "0x" + sym.address.ToString("x")
+        | _ ->
+            controls.symbolName.Text <- ""
+            controls.symbolLocation.Text <- ""
+            controls.symbolSize.Text <- ""
+            controls.symbolAddress.Text <- "")
+
 let bindToViewAsync syms =
     async {
         do! Async.SwitchToContext context
         updateFilterUI syms
+        updateSymbolUI ()
         do! rebindToViewAsync syms
     }
 
