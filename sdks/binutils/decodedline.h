@@ -13,4 +13,4 @@ struct DecodedLineVM
     virtual void addLine(unsigned int file, unsigned int line, uint64_t address) = 0;
 };
 
-bool decodedLineProcess(struct bfd* abfd, DecodedLineVM* vm);
+bool decodedLineProcess(struct bfd* abfd, struct bfd_symbol** symtab, DecodedLineVM* vm);

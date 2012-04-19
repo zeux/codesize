@@ -489,30 +489,37 @@ static bool display_debug_lines_decoded (bfd* abfd, unsigned char *data, bfd_siz
     return 0;
 }
 
-static void dump_dwarf_section (bfd *abfd, asection *sec, void *arg)
+struct DecodedLineProcessContext
 {
-    const char *name = bfd_get_section_name (abfd, sec);
+    DecodedLineVM* vm;
+    asymbol** symtab;
 
-    if (strcmp(name, ".debug_line") == 0 || strcmp(name, ".zdebug_line") == 0)
+    static void dump_dwarf_section (bfd *abfd, asection *sec, void *arg)
     {
-        bfd_size_type size = bfd_get_section_size (sec);
+        DecodedLineProcessContext* ctx = static_cast<DecodedLineProcessContext*>(arg);
 
-        unsigned char* start = bfd_simple_get_relocated_section_contents(abfd, sec, 0, 0);
+        const char *name = bfd_get_section_name (abfd, sec);
 
-        if (start)
+        if (strcmp(name, ".debug_line") == 0 || strcmp(name, ".zdebug_line") == 0)
         {
-            display_debug_lines_decoded (abfd, start, size, static_cast<DecodedLineVM*>(arg));
+            bfd_size_type size = bfd_get_section_size (sec);
 
-            free(start);
+            unsigned char* start = bfd_simple_get_relocated_section_contents(abfd, sec, 0, ctx->symtab);
+
+            if (start)
+            {
+                display_debug_lines_decoded (abfd, start, size, ctx->vm);
+
+                free(start);
+            }
         }
     }
-}
+};
 
-bool decodedLineProcess(bfd* abfd, DecodedLineVM* vm)
+bool decodedLineProcess(bfd* abfd, asymbol** symtab, DecodedLineVM* vm)
 {
-    abfd->flags |= BFD_DECOMPRESS;
-
-    bfd_map_over_sections(abfd, dump_dwarf_section, vm);
+    DecodedLineProcessContext context = {vm, symtab};
+    bfd_map_over_sections(abfd, DecodedLineProcessContext::dump_dwarf_section, &context);
 
     return true;
 }

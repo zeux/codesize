@@ -11,17 +11,40 @@
 #include <string>
 #include <map>
 
+#include <objbase.h>
+
 #include <bfd.h>
 #include "bfdext.h"
 
 #include "binutils.h"
 #include "decodedline.h"
 
+// Helper functions
+template <typename T> T* pbegin(std::vector<T>& v)
+{
+    return v.empty() ? nullptr : &v[0];
+}
+
 // Symbol extraction
-bool keepSymbol(bfd* f, asymbol* sym)
+std::vector<asymbol*> slurpSymtab(bfd* abfd)
+{
+    long storage_needed = bfd_get_symtab_upper_bound (abfd);
+
+    std::vector<asymbol*> res(storage_needed);
+
+    if (storage_needed)
+    {
+        long symcount = bfd_canonicalize_symtab (abfd, &res[0]);
+        res.resize(symcount);
+    }
+
+    return std::move(res);
+}
+
+bool keepSymbol(bfd* abfd, asymbol* sym)
 {
     if (sym->flags & BSF_DEBUGGING) return false;
-	if (bfd_is_target_special_symbol(f, sym)) return false;
+	if (bfd_is_target_special_symbol(abfd, sym)) return false;
 
     return true;
 }
@@ -35,14 +58,14 @@ struct BuSymbolOwn: BuSymbol
     }
 };
 
-char* getDemangledNameRaw(bfd* f, const char* name)
+char* getDemangledNameRaw(bfd* abfd, const char* name)
 {
-    char* result = bfd_demangle(f, name, DMGL_PARAMS | DMGL_ANSI | DMGL_RET_POSTFIX);
+    char* result = bfd_demangle(abfd, name, DMGL_PARAMS | DMGL_ANSI | DMGL_RET_POSTFIX);
 
     return result ? result : strdup(name);
 }
 
-char* getDemangledName(bfd* f, const char* name)
+char* getDemangledName(bfd* abfd, const char* name)
 {
     // strip ./$ prefix
     if (name[0] == '.' || name[0] == '$') name++;
@@ -56,48 +79,40 @@ char* getDemangledName(bfd* f, const char* name)
 
         temp.get()[length - 7] = 0;
 
-        return getDemangledNameRaw(f, temp.get());
+        return getDemangledNameRaw(abfd, temp.get());
     }
     else
-        return getDemangledNameRaw(f, name);
+        return getDemangledNameRaw(abfd, name);
 }
 
-std::vector<BuSymbolOwn> getSymbols(bfd* f)
+std::vector<BuSymbolOwn> getSymbols(bfd* abfd, asymbol** symtab, size_t symcount)
 {
     std::vector<BuSymbolOwn> result;
 
-    void* minisyms;
-    unsigned int size;
+    bool elf = bfd_get_flavour(abfd) == bfd_target_elf_flavour;
 
-    long symcount = bfd_read_minisymbols(f, 0, &minisyms, &size);
-
-    if (symcount > 0)
+    for (size_t i = 0; i < symcount; ++i)
     {
-        bool elf = bfd_get_flavour(f) == bfd_target_elf_flavour;
-        asymbol* store = bfd_make_empty_symbol(f);
+        asymbol* sym = symtab[i];
+        assert(sym);
 
-        for (long i = 0; i < symcount; ++i)
-        {
-            asymbol* sym = bfd_minisymbol_to_symbol(f, 0, static_cast<char*>(minisyms) + i * size, store);
-            if (!sym) continue;
-            if (!keepSymbol(f, sym)) continue;
+        if (!keepSymbol(abfd, sym)) continue;
 
-            symbol_info info;
-            bfd_get_symbol_info(f, sym, &info);
+        symbol_info info;
+        bfd_get_symbol_info(abfd, sym, &info);
 
-            char* name = getDemangledName(f, info.name);
+        char* name = getDemangledName(abfd, info.name);
 
-            BuSymbolOwn s;
-            s.address = info.value;
-            s.size = elf ? reinterpret_cast<elf_symbol_type*>(sym)->internal_elf_sym.st_size : 0;
+        BuSymbolOwn s;
+        s.address = info.value;
+        s.size = elf ? reinterpret_cast<elf_symbol_type*>(sym)->internal_elf_sym.st_size : 0;
 
-            s.type = info.type;
-            s.name = name;
+        s.type = info.type;
+        s.name = name;
 
-            s.namestorage.reset(name);
+        s.namestorage.reset(name);
 
-            result.push_back(std::move(s));
-        }
+        result.push_back(std::move(s));
     }
 
     return std::move(result);
@@ -152,9 +167,10 @@ struct DecodedLineVMExtractor: DecodedLineVM
 // DLL implementation
 struct BuFile
 {
-    std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> file;
+    std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> abfd;
+    std::vector<asymbol*> symtab;
 
-    BuFile(std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> file): file(std::move(file))
+    BuFile(std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> abfd, std::vector<asymbol*> symtab): abfd(std::move(abfd)), symtab(std::move(symtab))
     {
     }
 };
@@ -242,11 +258,18 @@ BuFile* buOpen(const char* path, int offset)
 {
     iovecStreamParams p = {path, offset};
 
-    std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> file(bfd_openr_iovec(path, 0, iovecOpen, &p, iovecRead, iovecClose, iovecStat), bfd_close);
-    if (!file) return 0;
-    if (!bfd_check_format(file.get(), bfd_object)) return 0;
+    // open file
+    std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> abfd(bfd_openr_iovec(path, 0, iovecOpen, &p, iovecRead, iovecClose, iovecStat), bfd_close);
+    if (!abfd) return 0;
+    if (!bfd_check_format(abfd.get(), bfd_object)) return 0;
 
-    return new BuFile(std::move(file));
+    // decompress sections (we don't know if we'll need it)
+    abfd->flags |= BFD_DECOMPRESS;
+
+    // slurp symtab since all operations need it anyway
+    std::vector<asymbol*> symtab = slurpSymtab(abfd.get());
+
+    return new BuFile(std::move(abfd), std::move(symtab));
 }
 
 void buClose(BuFile* file)
@@ -256,7 +279,7 @@ void buClose(BuFile* file)
 
 BuSymtab* buSymtabOpen(BuFile* file)
 {
-    std::vector<BuSymbolOwn> symbols = getSymbols(file->file.get());
+    std::vector<BuSymbolOwn> symbols = getSymbols(file->abfd.get(), pbegin(file->symtab), file->symtab.size());
 
     return new BuSymtab(std::move(symbols));
 }
@@ -277,7 +300,7 @@ void buSymtabClose(BuSymtab* symtab)
 BuLinetab* buLinetabOpen(BuFile* file)
 {
     DecodedLineVMExtractor vm;
-    if (!decodedLineProcess(file->file.get(), &vm)) return 0;
+    if (!decodedLineProcess(file->abfd.get(), pbegin(file->symtab), &vm)) return 0;
 
     std::vector<std::string> files(vm.pathcache.size());
 
@@ -311,4 +334,61 @@ API unsigned int buLinetabGetLines(BuLinetab* linetab, BuLine* buffer, unsigned 
         buffer[i] = linetab->lines[i];
 
     return linetab->lines.size();
+}
+
+struct GetFileLineContext
+{
+    bool found;
+    uint64_t address;
+    const char* filename;
+    const char* functionname;
+    unsigned int line;
+
+    asymbol** syms;
+
+    static void find_address_in_section (bfd *abfd, asection *section, void *data)
+    {
+        GetFileLineContext* ctx = static_cast<GetFileLineContext*>(data);
+
+        if (ctx->found) return;
+
+        uint64_t pc = ctx->address;
+        
+        if ((bfd_get_section_flags (abfd, section) & SEC_ALLOC) == 0)
+            return;
+
+        bfd_vma vma = bfd_get_section_vma (abfd, section);
+        if (pc < vma)
+            return;
+
+        bfd_size_type size = bfd_get_section_size (section);
+        if (pc >= vma + size)
+            return;
+
+        ctx->found = bfd_find_nearest_line (abfd, section, ctx->syms, pc - vma, &ctx->filename, &ctx->functionname, &ctx->line);
+    }
+};
+
+char* CoTaskStrDup(const char* str)
+{
+    if (!str) return 0;
+
+    size_t size = strlen(str) + 1;
+    void* memory = CoTaskMemAlloc(size);
+
+    if (memory) memcpy(memory, str, size);
+
+    return static_cast<char*>(memory);
+}
+
+API bool buGetFileLine(BuFile* file, uint64_t address, const char** filename, unsigned int* line)
+{
+    GetFileLineContext context = {false, address, nullptr, nullptr, 0, pbegin(file->symtab)};
+
+    bfd_map_over_sections(file->abfd.get(), GetFileLineContext::find_address_in_section, &context);
+
+    *filename = CoTaskStrDup(context.filename);
+    *line = context.line;
+
+    return context.found && context.filename;
 }

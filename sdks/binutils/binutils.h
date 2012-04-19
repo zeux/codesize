@@ -39,3 +39,5 @@ struct BuLine
 
 API unsigned int buLinetabGetFiles(BuLinetab* linetab, const char** buffer, unsigned int bufferSize);
 API unsigned int buLinetabGetLines(BuLinetab* linetab, BuLine* buffer, unsigned int bufferSize);
+
+API bool buGetFileLine(BuFile* file, uint64_t address, const char** filename, unsigned int* line);
