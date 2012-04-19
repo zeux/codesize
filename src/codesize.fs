@@ -255,7 +255,40 @@ let updateFilterUI syms =
 
 let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
 
+type HighlightLineBackgroundRenderer(editor: ICSharpCode.AvalonEdit.TextEditor, line) =
+    interface ICSharpCode.AvalonEdit.Rendering.IBackgroundRenderer with
+        member this.Layer = ICSharpCode.AvalonEdit.Rendering.KnownLayer.Background
+        member this.Draw(textView, drawingContext) =
+            textView.EnsureVisualLines()
+
+            let cline = editor.Document.GetLineByNumber(line)
+            let rects = ICSharpCode.AvalonEdit.Rendering.BackgroundGeometryBuilder.GetRectsForSegment(textView, cline)
+
+            for rect in rects do
+                drawingContext.DrawRectangle(
+                    System.Windows.Media.Brushes.LightSteelBlue, null,
+                    Rect(rect.Location, Size(textView.ActualWidth, rect.Height)))
+
+let openEditor (file: string, line) =
+    try
+        let editor = ICSharpCode.AvalonEdit.TextEditor()
+        editor.Load(file)
+        editor.SyntaxHighlighting <- ICSharpCode.AvalonEdit.Highlighting.HighlightingManager.Instance.GetDefinition("C++")
+        editor.ShowLineNumbers <- true
+        editor.IsReadOnly <- true
+
+        editor.Loaded.Add(fun _ -> editor.ScrollToLine(line))
+        editor.TextArea.TextView.BackgroundRenderers.Add(HighlightLineBackgroundRenderer(editor, line) :> ICSharpCode.AvalonEdit.Rendering.IBackgroundRenderer)
+
+        Window(Title = file, Content = editor).Show()
+    with _ -> ()
+
 let updateSymbolUI (ess: ISymbolSource) =
+    controls.symbolLocation.MouseDoubleClick.Add(fun _ ->
+        match controls.symbolLocation.Tag with
+        | :? (string * int) as fl -> openEditor fl
+        | _ -> ())
+    
     controls.treeView.SelectedItemChanged.Add(fun _ ->
         let item = (controls.treeView.SelectedItem :?> TreeViewItem)
         let tag = (if item = null then null else item.Tag)
@@ -269,12 +302,16 @@ let updateSymbolUI (ess: ISymbolSource) =
 
             async {
                 do! AsyncUI.switchToWork ()
-                let text =
-                    match ess.GetFileLine sym.address with
-                    | Some (file, line) -> sprintf "%s (%d)" file line
-                    | None -> "unknown"
+                let fl = ess.GetFileLine sym.address
+
                 do! AsyncUI.switchToUI ()
+                let text, tag =
+                    match fl with
+                    | Some (file, line) -> sprintf "%s (%d)" file line, box (file, line)
+                    | None -> "unknown", null
+
                 controls.symbolLocation.Text <- text
+                controls.symbolLocation.Tag <- tag
             } |> updateSymbolLocationAgent.Post
         | _ ->
             controls.symbolName.Text <- ""
@@ -287,6 +324,7 @@ let bindToViewAsync (ess: ISymbolSource) =
         let symbols = ess.Symbols |> Seq.toArray
 
         do! AsyncUI.switchToUI ()
+
         updateFilterUI symbols
         updateSymbolUI ess
 
