@@ -1,0 +1,9 @@
+- size-sorted list display
+- PDB support
+- file/line visualization (tree/list)
+- file/line jump (vs/vim/emacs/internal editor?)
+- path normalization (for file/line vis and file jump)
+- 'guard variable for', 'vtable for', 'non-virtual thunk to' are usually useful as suffixes - grouping option? (ideally need to xform symbol names here)
+- autosave/load UI settings to config file
+- refactor some code with wpf bindings
+- async file/line lookup for symbol info
