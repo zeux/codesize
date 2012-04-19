@@ -132,6 +132,8 @@ type ElfSymbolSource(path, ?offset) =
         |> binutils.fixSizesSymBounds (symbols.Value |> Array.map (fun sym -> sym.address, sym.size))
         |> Array.map (fun (addr, size, file, line) -> { address = addr; size = size; file = file; line = line })
 
+    let fileLineLock = obj()
+
     override this.Finalize() =
         binutils.buClose file
 
@@ -140,6 +142,9 @@ type ElfSymbolSource(path, ?offset) =
         member this.FileLines = filelines.Value |> Array.toSeq
 
         member this.GetFileLine address =
+            // buGetFileLine is not thread-safe
+            lock fileLineLock <| fun _ ->
+
             let mutable filename = null
             let mutable line = 0
 
