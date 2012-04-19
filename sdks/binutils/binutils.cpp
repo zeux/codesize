@@ -65,21 +65,39 @@ char* getDemangledNameRaw(bfd* abfd, const char* name)
     return result ? result : strdup(name);
 }
 
+char* concatStrings(const char* lhs, const char* rhs)
+{
+    size_t ll = strlen(lhs);
+    size_t rl = strlen(rhs);
+
+    char* result = static_cast<char*>(malloc(ll + rl + 1));
+    if (!result) return 0;
+
+    memcpy(result, lhs, ll);
+    memcpy(result + ll, rhs, rl);
+    result[ll + rl] = 0;
+
+    return result;
+}
+
 char* getDemangledName(bfd* abfd, const char* name)
 {
     // strip ./$ prefix
     if (name[0] == '.' || name[0] == '$') name++;
 
-    // strip $rodata suffix
     size_t length = strlen(name);
 
+    // strip $rodata suffix before demangling
     if (length > 7 && strcmp(name + length - 7, "$rodata") == 0)
     {
-        std::unique_ptr<char, void (*)(void*)> temp(strdup(name), free);
+        std::string temp(name, length - 7);
 
-        temp.get()[length - 7] = 0;
+        char* rawname = getDemangledNameRaw(abfd, temp.c_str());
+        char* result = rawname ? concatStrings(rawname, " rodata") : 0;
 
-        return getDemangledNameRaw(abfd, temp.get());
+        free(rawname);
+
+        return result;
     }
     else
         return getDemangledNameRaw(abfd, name);
@@ -390,5 +408,5 @@ API bool buGetFileLine(BuFile* file, uint64_t address, const char** filename, un
     *filename = CoTaskStrDup(context.filename);
     *line = context.line;
 
-    return context.found && context.filename;
+    return context.found;
 }
