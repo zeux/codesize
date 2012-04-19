@@ -258,7 +258,9 @@ let updateFilterUI syms =
 let updateSymbolUI (ess: ISymbolSource) =
     controls.treeView.SelectedItemChanged.Add(fun _ ->
         let item = (controls.treeView.SelectedItem :?> TreeViewItem)
-        match item.Tag with
+        let tag = (if item = null then null else item.Tag)
+
+        match tag with
         | :? Symbols.Symbol as sym ->
             controls.symbolName.Text <- sym.name
             controls.symbolLocation.Text <-
