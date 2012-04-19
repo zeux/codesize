@@ -255,13 +255,16 @@ let updateFilterUI syms =
     controls.groupPrefix.SelectionChanged.Add(fun _ -> rebindToView syms)
     controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView syms)
 
-let updateSymbolUI () =
+let updateSymbolUI (ess: ISymbolSource) =
     controls.treeView.SelectedItemChanged.Add(fun _ ->
         let item = (controls.treeView.SelectedItem :?> TreeViewItem)
         match item.Tag with
         | :? Symbols.Symbol as sym ->
             controls.symbolName.Text <- sym.name
-            controls.symbolLocation.Text <- ""
+            controls.symbolLocation.Text <-
+                match ess.GetFileLine sym.address with
+                | Some (file, line) -> sprintf "%s(%d)" file line
+                | None -> "unknown"
             controls.symbolSize.Text <- sym.size.ToString("#,0")
             controls.symbolAddress.Text <- "0x" + sym.address.ToString("x")
         | _ ->
@@ -270,12 +273,15 @@ let updateSymbolUI () =
             controls.symbolSize.Text <- ""
             controls.symbolAddress.Text <- "")
 
-let bindToViewAsync syms =
+let bindToViewAsync (ess: ISymbolSource) =
     async {
+        let symbols = ess.Symbols |> Seq.toArray
+
         do! Async.SwitchToContext context
-        updateFilterUI syms
-        updateSymbolUI ()
-        do! rebindToViewAsync syms
+        updateFilterUI symbols
+        updateSymbolUI ess
+
+        do! rebindToViewAsync symbols
     }
 
 window.Loaded.Add(fun _ ->
@@ -294,8 +300,7 @@ window.Loaded.Add(fun _ ->
 
     async {
         let ess = getSymbolSource path
-        let symbols = ess.Symbols |> Seq.toArray
-        do! bindToViewAsync symbols
+        do! bindToViewAsync ess
         controls.tabTreeView.IsSelected <- true
     } |> Async.Start)
 
