@@ -38,6 +38,8 @@ module private binutils =
     [<DllImport("binutils")>] extern int buLinetabGetFiles(BuLinetab linetab, [<Out>] nativeint[] buffer, int bufferSize)
     [<DllImport("binutils")>] extern int buLinetabGetLines(BuLinetab linetab, [<Out>] BuLine[] buffer, int bufferSize)
 
+    [<DllImport("binutils")>] extern [<MarshalAs(UnmanagedType.U1)>] bool buGetFileLine(BuFile file, uint64 address, string& filename, int& line)
+
     // auto-closing scope helper
     type Scoped(value, deleter) =
         interface IDisposable with
@@ -94,13 +96,13 @@ module private binutils =
             addr, min size (symaddr + symsize - addr), file, line)
 
 type ElfSymbolSource(path, ?offset) =
+    let file = binutils.buOpen(path, defaultArg offset 0)
+    do if file = 0n then failwithf "Error opening file %s" path
+
     let symbols =
         lazy
-        use file = new binutils.Scoped(binutils.buOpen(path, defaultArg offset 0), binutils.buClose)
-        if file.Value = 0n then failwithf "Error opening file %s" path
-
         let data =
-            use symtab = new binutils.Scoped(binutils.buSymtabOpen(file.Value), binutils.buSymtabClose)
+            use symtab = new binutils.Scoped(binutils.buSymtabOpen(file), binutils.buSymtabClose)
             if symtab.Value = 0n then failwithf "Error reading symbols from file %s" path
 
             binutils.getArray binutils.buSymtabGetData symtab.Value
@@ -113,11 +115,8 @@ type ElfSymbolSource(path, ?offset) =
 
     let filelines =
         lazy
-        use file = new binutils.Scoped(binutils.buOpen(path, defaultArg offset 0), binutils.buClose)
-        if file.Value = 0n then failwithf "Error opening file %s" path
-
         let data =
-            use linetab = new binutils.Scoped(binutils.buLinetabOpen(file.Value), binutils.buLinetabClose)
+            use linetab = new binutils.Scoped(binutils.buLinetabOpen(file), binutils.buLinetabClose)
             if linetab.Value = 0n then failwithf "Error reading file/line data from file %s" path
 
             let files =
@@ -133,7 +132,18 @@ type ElfSymbolSource(path, ?offset) =
         |> binutils.fixSizesSymBounds (symbols.Value |> Array.map (fun sym -> sym.address, sym.size))
         |> Array.map (fun (addr, size, file, line) -> { address = addr; size = size; file = file; line = line })
 
+    override this.Finalize() =
+        binutils.buClose file
+
     interface ISymbolSource with
         member this.Symbols = symbols.Value |> Array.toSeq
         member this.FileLines = filelines.Value |> Array.toSeq
-        member this.GetFileLine address = None
+
+        member this.GetFileLine address =
+            let mutable filename = null
+            let mutable line = 0
+
+            if binutils.buGetFileLine(file, address, &filename, &line) then
+                Some (filename, line)
+            else
+                None
