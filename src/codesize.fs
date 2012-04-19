@@ -4,6 +4,7 @@ open System.Text
 open System.Text.RegularExpressions
 open System.Windows
 open System.Windows.Controls
+open System.Windows.Documents
 open Microsoft.Win32
 
 open Symbols
@@ -52,6 +53,7 @@ module controls =
     let labelStatus = window?LabelStatus :?> TextBlock
     let symbolName = window?SymbolName :?> TextBox
     let symbolLocation = window?SymbolLocation :?> TextBox
+    let symbolLocationLink = window?SymbolLocationLink :?> Hyperlink
     let symbolSize = window?SymbolSize :?> TextBox
     let symbolAddress = window?SymbolAddress :?> TextBox
 
@@ -284,8 +286,8 @@ let openEditor (file: string, line) =
     with _ -> ()
 
 let updateSymbolUI (ess: ISymbolSource) =
-    controls.symbolLocation.MouseDoubleClick.Add(fun _ ->
-        match controls.symbolLocation.Tag with
+    controls.symbolLocationLink.RequestNavigate.Add(fun _ ->
+        match controls.symbolLocationLink.Tag with
         | :? (string * int) as fl -> openEditor fl
         | _ -> ())
     
@@ -297,6 +299,7 @@ let updateSymbolUI (ess: ISymbolSource) =
         | :? Symbols.Symbol as sym ->
             controls.symbolName.Text <- sym.name
             controls.symbolLocation.Text <- "..."
+            controls.symbolLocationLink.Tag <- null
             controls.symbolAddress.Text <- "0x" + sym.address.ToString("x")
             controls.symbolSize.Text <- sym.size.ToString("#,0")
 
@@ -307,11 +310,13 @@ let updateSymbolUI (ess: ISymbolSource) =
                 do! AsyncUI.switchToUI ()
                 let text, tag =
                     match fl with
-                    | Some (file, line) -> sprintf "%s (%d)" file line, box (file, line)
-                    | None -> "unknown", null
+                    | Some (file, line) ->
+                        sprintf "%s (%d)" file line, (if File.Exists(file) then box (file, line) else null)
+                    | None ->
+                        "unknown", null
 
                 controls.symbolLocation.Text <- text
-                controls.symbolLocation.Tag <- tag
+                controls.symbolLocationLink.Tag <- tag
             } |> updateSymbolLocationAgent.Post
         | _ ->
             controls.symbolName.Text <- ""

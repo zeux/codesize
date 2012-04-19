@@ -93,7 +93,9 @@
                                 <ColumnDefinition />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="Name:" Grid.Row="0" Grid.Column="0" />
-                            <TextBlock Text="Location:" Grid.Row="1" Grid.Column="0" />
+                            <TextBlock Grid.Row="1" Grid.Column="0">
+                                <Hyperlink Name="SymbolLocationLink" IsEnabled="{Binding ElementName=SymbolLocationLink, Path=Tag, TargetNullValue=false}">Location</Hyperlink>:
+                            </TextBlock>
                             <TextBlock Text="Size:" Grid.Row="2" Grid.Column="0" />
                             <TextBlock Text="Address:" Grid.Row="3" Grid.Column="0" />
                             <TextBox Name="SymbolName" Grid.Row="0" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap" MaxLines="4"/>
