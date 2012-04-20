@@ -3,7 +3,7 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        xmlns:conv="clr-namespace:Converters;assembly=codesize"
-       Title="codesize" Height="300" Width="700" ResizeMode="CanResizeWithGrip">
+       Title="codesize" Height="342" Width="768" ResizeMode="CanResizeWithGrip">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -11,7 +11,29 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <StackPanel Orientation="Horizontal" Grid.Row="0">
-            <GroupBox Header="Filter" HorizontalAlignment="Left" Height="80" Margin="4,4,4,4" VerticalAlignment="Top" Width="343" Padding="4">
+            <GroupBox Header="Display" HorizontalAlignment="Left" Height="80" Margin="4,4,4,0" VerticalAlignment="Top" Padding="4" Width="130">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Data:" Grid.Row="0" Grid.Column="0"/>
+                    <ComboBox Name="DisplayData" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="0" Grid.Column="1">
+                        <ComboBoxItem Content="Symbols"/>
+                        <ComboBoxItem Content="Files"/>
+                    </ComboBox>
+                    <TextBlock Text="View:" Grid.Row="1" Grid.Column="0"/>
+                    <ComboBox Name="DisplayView" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="1" Grid.Column="1">
+                        <ComboBoxItem Content="Tree"/>
+                        <ComboBoxItem Content="List"/>
+                    </ComboBox>
+                </Grid>
+            </GroupBox>
+            <GroupBox Header="Filter" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Padding="4">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -105,6 +127,11 @@
                             <TextBox Name="SymbolAddress" Grid.Row="3" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
                         </Grid>
                     </GroupBox>
+                </Grid>
+            </TabItem>
+            <TabItem Header="TabList" Name="TabList" Visibility="Collapsed">
+                <Grid>
+                    <ListView Name="ListView" VirtualizingStackPanel.IsVirtualizing="True" />
                 </Grid>
             </TabItem>
         </TabControl>

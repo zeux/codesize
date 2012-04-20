@@ -40,6 +40,9 @@ module controls =
     | Word = 1
 
     let treeView = window?TreeView :?> TreeView
+    let listView = window?ListView :?> ListView
+    let displayData = window?DisplayData :?> ComboBox 
+    let displayView = window?DisplayView :?> ComboBox
     let filterText = window?FilterText :?> TextBox
     let filterTextType = window?FilterTextType :?> ComboBox 
     let filterSize = window?FilterSize :?> TextBox
@@ -49,6 +52,7 @@ module controls =
     let tabControl = window?TabControl :?> TabControl
     let tabLoading = window?TabLoading :?> TabItem
     let tabTreeView = window?TabTreeView :?> TabItem
+    let tabListView = window?TabListView :?> TabItem
     let labelLoading = window?LabelLoading :?> TextBlock
     let labelStatus = window?LabelStatus :?> TextBlock
     let symbolName = window?SymbolName :?> TextBox
