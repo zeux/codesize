@@ -48,7 +48,10 @@ type Window() as this =
     do
         editor.TextArea.DefaultInputHandler.NestedInputHandlers.Add(SearchInputHandler(editor.TextArea))
 
-        window.InputBindings.Add(InputBinding(ActionCommand(fun _ -> this.Close()), KeyGesture(Key.Escape))) |> ignore
+        let escBinding = InputBinding(ActionCommand(fun _ -> this.Close()), KeyGesture(Key.Escape))
+        window.InputBindings.Add(escBinding) |> ignore
+        editor.InputBindings.Add(escBinding) |> ignore
+        editor.TextArea.InputBindings.Add(escBinding) |> ignore
 
         window.Closing.Add(fun args ->
             this.Close()
