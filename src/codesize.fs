@@ -267,6 +267,12 @@ let updateSymbolUI (ess: ISymbolSource) =
         | :? (string * int) as fl -> editor.Value.Open(fst fl, snd fl)
         | _ -> ())
     
+    // Ideally we should do resolve ourselves here, but it's too much work for now
+    controls.treeView.MouseDoubleClick.Add(fun _ ->
+        match controls.symbolLocationLink.Tag with
+        | :? (string * int) as fl -> editor.Value.Open(fst fl, snd fl)
+        | _ -> ())
+
     controls.treeView.SelectedItemChanged.Add(fun _ ->
         let item = (controls.treeView.SelectedItem :?> TreeViewItem)
         let tag = (if item = null then null else item.Tag)

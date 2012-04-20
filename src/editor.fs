@@ -7,6 +7,7 @@ open System.Windows.Media
 
 open ICSharpCode.AvalonEdit
 open ICSharpCode.AvalonEdit.Rendering
+open ICSharpCode.AvalonEdit.Search
 
 type HighlightLineBackgroundRenderer(editor: TextEditor) as this =
     let mutable lineRange = 0, 0
@@ -31,6 +32,12 @@ type HighlightLineBackgroundRenderer(editor: TextEditor) as this =
                         drawingContext.DrawRectangle(Brushes.LightSteelBlue, null,
                             Rect(rect.Location, Size(textView.ActualWidth, rect.Height)))
 
+type ActionCommand(action) =
+    interface ICommand with 
+        member this.add_CanExecuteChanged h = ()
+        member this.remove_CanExecuteChanged h = ()
+        member this.CanExecute(o) = true
+        member this.Execute(o) = action o
 
 type Window() as this =
     let window = Application.LoadComponent(Uri("src/ui/editor.xaml", UriKind.Relative)) :?> System.Windows.Window
@@ -38,32 +45,29 @@ type Window() as this =
 
     let hlRenderer = HighlightLineBackgroundRenderer(editor)
 
-    let scrollLine = ref 1
-
     do
-        window.KeyDown.Add(fun args ->
-            if args.Key = Key.Escape then this.Close())
+        editor.TextArea.DefaultInputHandler.NestedInputHandlers.Add(SearchInputHandler(editor.TextArea))
+
+        window.InputBindings.Add(InputBinding(ActionCommand(fun _ -> this.Close()), KeyGesture(Key.Escape))) |> ignore
 
         window.Closing.Add(fun args ->
             this.Close()
             args.Cancel <- true)
 
-        editor.Loaded.Add(fun _ ->
-            editor.ScrollToLine(!scrollLine))
-
-        editor.TextChanged.Add(fun _ ->
-            editor.ScrollToLine(!scrollLine))
-
     member this.Open(file, line, ?highlightRange) =
         window.Title <- file
-        scrollLine := line
 
         editor.Load(file)
-        editor.ScrollToLine(line)
+
+        if editor.IsLoaded then
+            editor.ScrollToLine(line)
+        else
+            editor.Loaded.Add(fun _ -> editor.ScrollToLine(line))
 
         hlRenderer.LineRange <- defaultArg highlightRange (line, line)
 
         window.Show()
+        window.Focus() |> ignore
 
     member this.Close() =
         editor.Clear()
