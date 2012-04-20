@@ -72,7 +72,9 @@ module private binutils =
 
     // compute symbol sizes
     let fixSizes syms =
-        let symbols = syms |> Array.sortBy (fun (addr, _, _, _) -> addr)
+        // sort symbols by address, but keep empty symbols before non-empty
+        // this makes sure that if an empty and non-empty symbols share an address, padded size is correctly attributed
+        let symbols = syms |> Array.sortBy (fun (addr, size, _, _) -> addr * 2UL + (if size = 0UL then 0UL else 1UL))
 
         // some symbols don't have size information, so we compute the size as an address difference (this also takes alignment waste into account)
         // the exception is the last symbol, which we should just take the size from
