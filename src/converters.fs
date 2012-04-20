@@ -1,5 +1,6 @@
 namespace Converters
 
+open System.Windows
 open System.Windows.Markup
 open System.Windows.Data
 
@@ -39,3 +40,7 @@ type ListItem() =
         | :? Symbol as sym -> sym.size.ToString("#,0 ") + Impl.getSymbolText sym
         | :? FileLineRange as file -> file.size.ToString("#,0 ") + Impl.getFileText file
         | o -> failwithf "Unsupported type %O" $ o.GetType())
+
+type BoolToVisibility() =
+    inherit FnConverter<bool, Visibility>(fun item ->
+        if item then Visibility.Visible else Visibility.Hidden)

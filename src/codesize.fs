@@ -50,6 +50,7 @@ module controls =
     let filterSections = window?FilterSections :?> ComboBox
     let groupTemplates = window?GroupTemplates :?> ComboBox
     let groupPrefix = window?GroupPrefix :?> ComboBox
+    let groupLineMerge = window?GroupLineMerge :?> TextBox
     let panelLoading = window?PanelLoading :?> Panel
     let labelLoading = window?LabelLoading :?> TextBlock
     let labelStatus = window?LabelStatus :?> TextBlock
@@ -194,11 +195,11 @@ let getPrefixSymbolFn () =
     | _ ->
         failwithf "Unknown type %O" gp
 
-let getLineRangesForFile file (lines: FileLine seq) =
+let getLineRangesForFile file (lines: FileLine seq) mergeDistance =
     let ranges = Stack<FileLineRange>()
 
     for fl in lines |> Seq.sortBy (fun fl -> fl.line) do
-        if ranges.Count > 0 && (let top = ranges.Peek() in top.lineEnd = fl.line || top.lineEnd + 1 = fl.line) then
+        if ranges.Count > 0 && (let top = ranges.Peek() in fl.line - top.lineEnd <= mergeDistance) then
             let top = ranges.Pop()
             ranges.Push({ size = top.size + fl.size; file = file; lineBegin = top.lineBegin; lineEnd = fl.line })
         else
@@ -206,7 +207,7 @@ let getLineRangesForFile file (lines: FileLine seq) =
 
     ranges.ToArray()
 
-let getLineRanges (ess: ISymbolSource) =
+let getLineRanges (ess: ISymbolSource) mergeDistance =
     let normalizePath =
         let cache = Dictionary<string, string>()
         fun path ->
@@ -220,7 +221,7 @@ let getLineRanges (ess: ISymbolSource) =
     ess.FileLines
     |> Seq.groupBy (fun fl -> normalizePath fl.file)
     |> Seq.toArray
-    |> Array.collect (fun (file, lines) -> getLineRangesForFile file lines)
+    |> Array.collect (fun (file, lines) -> getLineRangesForFile file lines mergeDistance)
 
 let getSymbolText sym =
     sym.name + (if sym.section = "" then "" else " [" + sym.section + "]")
@@ -305,10 +306,16 @@ let rebindToViewFilesAsync (ess: ISymbolSource) view =
 
         let filter = getFilterFileFn ()
         let prefix = getPrefixSymbolFn ()
+        let mergeDistance =
+            match Int32.TryParse(controls.groupLineMerge.Text) with
+            | true, value -> value
+            | _ -> 1
 
         do! AsyncUI.switchToWork ()
 
-        let files = getLineRanges ess |> Array.filter (fun file -> token.ThrowIfCancellationRequested(); filter file)
+        let files =
+            getLineRanges ess mergeDistance
+            |> Array.filter (fun file -> token.ThrowIfCancellationRequested(); filter file)
         let stats = getStatsFile files
 
         match view with
@@ -391,6 +398,7 @@ let updateFilterUI ess =
 
     controls.groupPrefix.SelectionChanged.Add(fun _ -> rebindToView ess)
     controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView ess)
+    controls.groupLineMerge.TextChanged.Add(fun _ -> rebindToView ess)
 
 let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
 
