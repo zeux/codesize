@@ -212,9 +212,9 @@ static bool find_cu_header(
     if (try_parse_cu_header(abfd, data, end, linfo, standard_opcodes, end_of_sequence))
         return true;
 
-    // It is possible to have a run of zero bytes between CUs. Ideally we should parse debug_abbrev,
-    // but it's quite a bit of code, so let's try skipping zero bytes until we reach a valid header.
-    while (data < end && *data == 0)
+    // It is possible to have a run of padding bytes between CUs. Ideally we should parse debug_abbrev,
+    // but it's quite a bit of code, so let's try skipping until we reach a valid header.
+    while (data < end)
     {
         // Skip the rest byte by byte
         if (try_parse_cu_header(abfd, data, end, linfo, standard_opcodes, end_of_sequence))
@@ -242,8 +242,9 @@ static bool display_debug_lines_decoded (bfd* abfd, unsigned char *data, bfd_siz
         // Try to parse the header
         if (!find_cu_header(abfd, data, end, linfo, standard_opcodes, end_of_sequence))
         {
-            // Invalid debug information or padding is not zero so resync failed
-            return false;
+            // Invalid debug information or resync failed. We should've scanned the whole thing,
+            // so let's return true in case there was just some padding after last valid data...
+            return true;
         }
 
         SMR state_machine_regs;
