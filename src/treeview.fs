@@ -69,7 +69,9 @@ let rec private buildTree items (prefix: string) getText getPrefixLength =
                 let subnodes =
                     lazy
                     if Array.forall (fun (_, text, _) -> name = text) subitems then
-                        Array.map (fun (size, _, item) -> buildTreeItem (getText item) size item) subitems
+                        subitems
+                        |> Array.sortBy (fun (size, _, _) -> -size)
+                        |> Array.map (fun (size, _, item) -> buildTreeItem (getText item) size item)
                     else
                         buildTree subitems name getText getPrefixLength
 
@@ -81,8 +83,7 @@ let rec private buildTree items (prefix: string) getText getPrefixLength =
 
     // return sorted nodes
     nodes
-    |> Array.sortBy (fun (size, node) -> size)
-    |> Array.rev
+    |> Array.sortBy (fun (size, node) -> -size)
     |> Array.map (fun (size, node) -> node)
 
 type Binding(view: TreeView) =
