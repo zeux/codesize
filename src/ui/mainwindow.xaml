@@ -85,58 +85,55 @@
                 </Grid>
             </GroupBox>
         </StackPanel>
-        <TabControl Name="TabControl" Margin="0,0,0,0" Grid.Row="1">
-            <TabItem Name="TabLoading" Header="TabLoading" IsSelected="True" Visibility="Collapsed">
-                <Grid>
-                    <StackPanel Orientation="Vertical" VerticalAlignment="Center">
-                        <TextBlock Name="LabelLoading" Text="Loading..." HorizontalAlignment="Center" Padding="4,4,4,4" />
-                        <ProgressBar HorizontalAlignment="Center" Height="20" Width="200" IsIndeterminate="True" />
-                    </StackPanel>
-                </Grid>
-            </TabItem>
-            <TabItem Header="TabContents" Name="TabContents" Visibility="Collapsed">
+        <Grid Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="20" />
+                <RowDefinition Height="80" />
+            </Grid.RowDefinitions>
+            <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" SelectionMode="Single">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Converter={conv:ListItem}}" />
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <TreeView Name="ContentsTree" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" />
+            <GridSplitter Grid.Row="1" ResizeDirection="Rows" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="Auto" Background="WhiteSmoke" />
+            <GroupBox Grid.Row="1" Grid.RowSpan="2" Header="Symbol" Background="WhiteSmoke" Padding="4">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="20" />
-                        <RowDefinition Height="80" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
-                    <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" SelectionMode="Single">
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Converter={conv:ListItem}}" />
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                    <TreeView Name="ContentsTree" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" />
-                    <GridSplitter Grid.Row="1" ResizeDirection="Rows" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="Auto" Background="WhiteSmoke" />
-                    <GroupBox Grid.Row="1" Grid.RowSpan="2" Header="Symbol" Background="WhiteSmoke" Padding="4">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="Name:" Grid.Row="0" Grid.Column="0" />
-                            <TextBlock Grid.Row="1" Grid.Column="0">
-                                <Hyperlink Name="SymbolLocationLink" IsEnabled="{Binding ElementName=SymbolLocationLink, Path=Tag, Converter={conv:IsNotNull}, TargetNullValue=false}">Location</Hyperlink>:
-                            </TextBlock>
-                            <TextBlock Text="Size:" Grid.Row="2" Grid.Column="0" />
-                            <TextBlock Text="Address:" Grid.Row="3" Grid.Column="0" />
-                            <TextBox Name="SymbolName" Grid.Row="0" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap" MaxLines="4"/>
-                            <TextBox Name="SymbolLocation" Grid.Row="1" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
-                            <TextBox Name="SymbolSize" Grid.Row="2" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
-                            <TextBox Name="SymbolAddress" Grid.Row="3" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
-                        </Grid>
-                    </GroupBox>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Name:" Grid.Row="0" Grid.Column="0" />
+                    <TextBlock Grid.Row="1" Grid.Column="0">
+                        <Hyperlink Name="SymbolLocationLink" IsEnabled="{Binding ElementName=SymbolLocationLink, Path=Tag, Converter={conv:IsNotNull}, TargetNullValue=false}">Location</Hyperlink>:
+                    </TextBlock>
+                    <TextBlock Text="Size:" Grid.Row="2" Grid.Column="0" />
+                    <TextBlock Text="Address:" Grid.Row="3" Grid.Column="0" />
+                    <TextBox Name="SymbolName" Grid.Row="0" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap" MaxLines="4"/>
+                    <TextBox Name="SymbolLocation" Grid.Row="1" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
+                    <TextBox Name="SymbolSize" Grid.Row="2" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
+                    <TextBox Name="SymbolAddress" Grid.Row="3" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
                 </Grid>
-            </TabItem>
-        </TabControl>
+            </GroupBox>
+        </Grid>
+        <Grid Row="1">
+            <Grid Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Background="Gainsboro">
+                <Border BorderThickness="1" BorderBrush="Black" />
+                <StackPanel Orientation="Vertical">
+                    <TextBlock Name="LabelLoading" Text="Loading..." HorizontalAlignment="Center" Margin="4" />
+                    <ProgressBar HorizontalAlignment="Center" Height="20" Width="200" IsIndeterminate="True" Margin="4" />
+                </StackPanel>
+            </Grid>
+        </Grid>
         <StatusBar Grid.Row="2">
             <TextBlock Name="LabelStatus" Text="" />
         </StatusBar>

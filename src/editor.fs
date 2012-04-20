@@ -29,7 +29,7 @@ type HighlightLineBackgroundRenderer(editor: TextEditor) as this =
                     let rects = BackgroundGeometryBuilder.GetRectsForSegment(textView, cline)
 
                     for rect in rects do
-                        drawingContext.DrawRectangle(Brushes.LightSteelBlue, null,
+                        drawingContext.DrawRectangle(Brushes.AliceBlue, null,
                             Rect(rect.Location, Size(textView.ActualWidth, rect.Height)))
 
 type ActionCommand(action) =

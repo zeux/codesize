@@ -50,9 +50,7 @@ module controls =
     let filterSections = window?FilterSections :?> ComboBox
     let groupTemplates = window?GroupTemplates :?> ComboBox
     let groupPrefix = window?GroupPrefix :?> ComboBox
-    let tabControl = window?TabControl :?> TabControl
-    let tabLoading = window?TabLoading :?> TabItem
-    let tabContents = window?TabContents :?> TabItem
+    let panelLoading = window?PanelLoading :?> Panel
     let labelLoading = window?LabelLoading :?> TextBlock
     let labelStatus = window?LabelStatus :?> TextBlock
     let symbolName = window?SymbolName :?> TextBox
@@ -507,12 +505,13 @@ window.Loaded.Add(fun _ ->
             else
                 exit 0
 
+    window.Title <- sprintf "%s - %s" window.Title path
     controls.labelLoading.Text <- sprintf "Loading %s..." path
 
     protectUI $ async {
         let ess = getSymbolSource path
         do! bindToViewAsync ess
-        controls.tabContents.IsSelected <- true
+        controls.panelLoading.Visibility <- Visibility.Hidden
     } |> Async.Start)
 
 app.Run(window) |> ignore
