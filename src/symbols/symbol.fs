@@ -12,6 +12,12 @@ type FileLine =
       file: string
       line: int }
 
+type FileLineRange =
+    { size: uint64
+      file: string
+      lineBegin: int
+      lineEnd: int }
+
 [<Interface>]
 type ISymbolSource =
     abstract member Sections: string[]

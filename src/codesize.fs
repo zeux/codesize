@@ -85,12 +85,6 @@ let getFilterTextFn typ (text: string) =
     | _ ->
         failwithf "Unknown type %O" typ
 
-type FileLineRange =
-    { size: uint64
-      file: string
-      lineBegin: int
-      lineEnd: int }
-
 let getFilterSymbolFn () =
     let ft = getFilterTextFn (enum controls.filterTextType.SelectedIndex) controls.filterText.Text
     let fs =
@@ -363,11 +357,19 @@ let rebindToViewAsync (ess: ISymbolSource) =
         with
         | :? OperationCanceledException -> ()
     }
+
+let protectUI work =
+    async {
+        try do! work
+        with e ->
+            do! AsyncUI.switchToUI ()
+            controls.labelStatus.Text <- e.Message
+    }
     
 let rebindToViewAgent = AsyncUI.SingleUpdateAgent()
 
 let rebindToView ess =
-    rebindToViewAgent.Post(rebindToViewAsync ess)
+    rebindToViewAgent.Post(protectUI $ rebindToViewAsync ess)
 
 let updateDisplayUI ess =
     controls.displayData.SelectionChanged.Add(fun _ -> rebindToView ess)
@@ -507,7 +509,7 @@ window.Loaded.Add(fun _ ->
 
     controls.labelLoading.Text <- sprintf "Loading %s..." path
 
-    async {
+    protectUI $ async {
         let ess = getSymbolSource path
         do! bindToViewAsync ess
         controls.tabContents.IsSelected <- true
