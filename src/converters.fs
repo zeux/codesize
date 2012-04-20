@@ -22,7 +22,3 @@ type FnConverter<'T, 'U>(fn: 'T -> 'U) =
 
 type IsNotNull() =
     inherit FnConverter<obj, bool>(fun v -> v <> null)
-
-type SymbolListItem() =
-    inherit FnConverter<Symbol, string>(fun sym ->
-        sym.size.ToString("#,0 ") + sym.name + (if sym.section = "" then "" else " [" + sym.section + "]"))

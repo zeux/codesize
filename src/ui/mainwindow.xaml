@@ -3,6 +3,7 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        xmlns:conv="clr-namespace:Converters;assembly=codesize"
+       xmlns:cs="clr-namespace:codesize;assembly=codesize"
        Title="codesize" Height="342" Width="768" ResizeMode="CanResizeWithGrip">
     <Grid>
         <Grid.RowDefinitions>
@@ -103,8 +104,8 @@
                     </Grid.RowDefinitions>
                     <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" SelectionMode="Single">
                         <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Converter={conv:SymbolListItem}}" />
+                            <DataTemplate DataType="Symbol">
+                                <TextBlock Text="{Binding Converter={cs:Program+ListItem}}" />
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>

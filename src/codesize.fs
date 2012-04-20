@@ -1,3 +1,5 @@
+module codesize.Program
+
 open System
 open System.Collections.Generic
 open System.IO
@@ -236,6 +238,13 @@ let getFileText file =
         sprintf "%s:%d" file.file file.lineBegin
     else
         sprintf "%s:%d-%d" file.file file.lineBegin file.lineEnd
+
+type ListItem() =
+    inherit Converters.FnConverter<obj, string>(fun item ->
+        match item with
+        | :? Symbol as sym -> sym.size.ToString("#,0 ") + getSymbolText sym
+        | :? FileLineRange as file -> file.size.ToString("#,0 ") + getFileText file
+        | o -> failwithf "Unsupported type %O" $ o.GetType())
 
 let getStatsSymbol syms =
     // group symbols by section and find total size for each section
