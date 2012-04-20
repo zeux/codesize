@@ -53,7 +53,7 @@ byte_get_little_endian (unsigned char *field, int size)
 	  |    (((unsigned long) (field[3])) << 24);
 
     default:
-      abort();
+        return 0;
     }
 }
 
@@ -101,7 +101,7 @@ byte_get_big_endian (unsigned char *field, int size)
 	}
 
     default:
-      abort ();
+        return 0;
     }
 }
 
@@ -166,6 +166,124 @@ reset_state_machine (SMR& state_machine_regs, int is_stmt)
   state_machine_regs.end_sequence = 0;
 }
 
+static bool try_parse_cu_header(
+    elf_vma (*byte_get) (unsigned char *, int),
+    unsigned char* data, unsigned char* end, DWARF2_Internal_LineInfo& linfo, unsigned char*& standard_opcodes, unsigned char*& end_of_sequence)
+{
+    int initial_length_size;
+    int offset_size;
+
+    unsigned char *hdrptr = data;
+
+    /* Extract information from the Line Number Program Header.
+       (section 6.2.4 in the Dwarf3 doc).  */
+
+    /* Get the length of this CU's line number information block.  */
+    linfo.li_length = byte_get (hdrptr, 4);
+    hdrptr += 4;
+
+    if (linfo.li_length == 0xffffffff)
+    {
+        /* This section is 64-bit DWARF 3.  */
+        linfo.li_length = byte_get (hdrptr, 8);
+        hdrptr += 8;
+        offset_size = 8;
+        initial_length_size = 12;
+    }
+    else if (linfo.li_length == 0)
+    {
+        // Zero padding, need to resync
+        return false;
+    }
+    else
+    {
+        offset_size = 4;
+        initial_length_size = 4;
+    }
+
+    if (linfo.li_length + initial_length_size > end - data)
+    {
+        // The line info appears to be corrupt - the section is too small.
+        return false;
+    }
+
+    /* Get this CU's Line Number Block version number.  */
+    linfo.li_version = byte_get (hdrptr, 2);
+    hdrptr += 2;
+    if (linfo.li_version != 2
+            && linfo.li_version != 3
+            && linfo.li_version != 4)
+    {
+        // Only DWARF version 2, 3 and 4 line info is currently supported.
+        return false;
+    }
+
+    linfo.li_prologue_length = byte_get (hdrptr, offset_size);
+    hdrptr += offset_size;
+    linfo.li_min_insn_length = byte_get (hdrptr, 1);
+    hdrptr++;
+    if (linfo.li_version >= 4)
+    {
+        linfo.li_max_ops_per_insn = byte_get (hdrptr, 1);
+        hdrptr++;
+        if (linfo.li_max_ops_per_insn == 0)
+        {
+            // Invalid maximum operations per insn.
+            return false;
+        }
+    }
+    else
+        linfo.li_max_ops_per_insn = 1;
+
+    linfo.li_default_is_stmt = byte_get (hdrptr, 1);
+    if (linfo.li_default_is_stmt != 0 && linfo.li_default_is_stmt != 1)
+    {
+        // Invalid default is_stmt
+        return false;
+    }
+    hdrptr++;
+
+    linfo.li_line_base = byte_get (hdrptr, 1);
+    hdrptr++;
+    linfo.li_line_range = byte_get (hdrptr, 1);
+    hdrptr++;
+    linfo.li_opcode_base = byte_get (hdrptr, 1);
+    hdrptr++;
+
+    /* Sign extend the line base field.  */
+    linfo.li_line_base <<= 24;
+    linfo.li_line_base >>= 24;
+
+    /* Find the end of this CU's Line Number Information Block.  */
+    end_of_sequence = data + linfo.li_length + initial_length_size;
+
+    /* Save a pointer to the contents of the Opcodes table.  */
+    standard_opcodes = hdrptr;
+
+    return true;
+}
+
+static bool find_cu_header(
+    elf_vma (*byte_get) (unsigned char *, int),
+    unsigned char* data, unsigned char* end, DWARF2_Internal_LineInfo& linfo, unsigned char*& standard_opcodes, unsigned char*& end_of_sequence)
+{
+    if (try_parse_cu_header(byte_get, data, end, linfo, standard_opcodes, end_of_sequence))
+        return true;
+
+    // It is possible to have a run of zero bytes between CUs. Ideally we should parse debug_abbrev,
+    // but it's quite a bit of code, so let's try skipping zero bytes until we reach a valid header.
+    while (data < end && *data == 0)
+    {
+        // Skip the rest byte by byte
+        if (try_parse_cu_header(byte_get, data, end, linfo, standard_opcodes, end_of_sequence))
+            return true;
+
+        data++;
+    }
+
+    return false;
+}
+
 static bool display_debug_lines_decoded (bfd* abfd, unsigned char *data, bfd_size_type size, DecodedLineVM* vm)
 {
     elf_vma (*byte_get) (unsigned char *, int) = bfd_little_endian(abfd) ? byte_get_little_endian : byte_get_big_endian;
@@ -180,86 +298,15 @@ static bool display_debug_lines_decoded (bfd* abfd, unsigned char *data, bfd_siz
         DWARF2_Internal_LineInfo linfo;
         unsigned char *standard_opcodes;
         unsigned char *end_of_sequence;
-        unsigned char *hdrptr;
-        int initial_length_size;
-        int offset_size;
 
-        hdrptr = data;
-
-        /* Extract information from the Line Number Program Header.
-           (section 6.2.4 in the Dwarf3 doc).  */
-
-        /* Get the length of this CU's line number information block.  */
-        linfo.li_length = byte_get (hdrptr, 4);
-        hdrptr += 4;
-
-        if (linfo.li_length == 0xffffffff)
+        // Try to parse the header
+        if (!find_cu_header(byte_get, data, end, linfo, standard_opcodes, end_of_sequence))
         {
-            /* This section is 64-bit DWARF 3.  */
-            linfo.li_length = byte_get (hdrptr, 8);
-            hdrptr += 8;
-            offset_size = 8;
-            initial_length_size = 12;
-        }
-        else
-        {
-            offset_size = 4;
-            initial_length_size = 4;
-        }
-
-        if (linfo.li_length + initial_length_size > size)
-        {
-            // The line info appears to be corrupt - the section is too small.
+            // Invalid debug information or padding is not zero so resync failed
             return false;
         }
-
-        /* Get this CU's Line Number Block version number.  */
-        linfo.li_version = byte_get (hdrptr, 2);
-        hdrptr += 2;
-        if (linfo.li_version != 2
-                && linfo.li_version != 3
-                && linfo.li_version != 4)
-        {
-            // Only DWARF version 2, 3 and 4 line info is currently supported.
-            return false;
-        }
-
-        linfo.li_prologue_length = byte_get (hdrptr, offset_size);
-        hdrptr += offset_size;
-        linfo.li_min_insn_length = byte_get (hdrptr, 1);
-        hdrptr++;
-        if (linfo.li_version >= 4)
-        {
-            linfo.li_max_ops_per_insn = byte_get (hdrptr, 1);
-            hdrptr++;
-            if (linfo.li_max_ops_per_insn == 0)
-            {
-                // Invalid maximum operations per insn.
-                return false;
-            }
-        }
-        else
-            linfo.li_max_ops_per_insn = 1;
-        linfo.li_default_is_stmt = byte_get (hdrptr, 1);
-        hdrptr++;
-        linfo.li_line_base = byte_get (hdrptr, 1);
-        hdrptr++;
-        linfo.li_line_range = byte_get (hdrptr, 1);
-        hdrptr++;
-        linfo.li_opcode_base = byte_get (hdrptr, 1);
-        hdrptr++;
-
-        /* Sign extend the line base field.  */
-        linfo.li_line_base <<= 24;
-        linfo.li_line_base >>= 24;
-
-        /* Find the end of this CU's Line Number Information Block.  */
-        end_of_sequence = data + linfo.li_length + initial_length_size;
 
         reset_state_machine (state_machine_regs, linfo.li_default_is_stmt);
-
-        /* Save a pointer to the contents of the Opcodes table.  */
-        standard_opcodes = hdrptr;
 
         // VM: reset tables
         vm->resetTables();
