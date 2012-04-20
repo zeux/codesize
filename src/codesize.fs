@@ -220,7 +220,7 @@ let deactivateView (view: ItemsControl) =
 let activateView (view: ItemsControl) =
     view.Visibility <- Visibility.Visible
 
-let rebindToViewAsync syms =
+let rebindToViewAsync (ess: ISymbolSource) =
     async {
         do! AsyncUI.switchToUI ()
 
@@ -244,17 +244,18 @@ let rebindToViewAsync syms =
             do! AsyncUI.switchToWork ()
 
             let! token = Async.CancellationToken
-            let fs = syms |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
-            let stats = getStats fs
+
+            let syms = ess.Symbols |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
+            let stats = getStats syms
 
             match view with
             | controls.DisplayView.Tree ->
-                let items = fs |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
+                let items = syms |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
 
                 do! AsyncUI.switchToUI ()
                 treeViewBinding.Update(items, getSymbolText, prefix)
             | controls.DisplayView.List ->
-                let items = fs |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
+                let items = syms |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
 
                 do! AsyncUI.switchToUI ()
                 controls.contentsList.ItemsSource <- items
@@ -265,30 +266,30 @@ let rebindToViewAsync syms =
         | :? OperationCanceledException -> ()
     }
     
-let rebindToView syms =
-    rebindToViewAgent.Post(rebindToViewAsync syms)
+let rebindToView ess =
+    rebindToViewAgent.Post(rebindToViewAsync ess)
 
-let updateDisplayUI syms =
-    controls.displayView.SelectionChanged.Add(fun _ -> rebindToView syms)
+let updateDisplayUI ess =
+    controls.displayView.SelectionChanged.Add(fun _ -> rebindToView ess)
 
-let updateFilterUI syms =
-    controls.filterText.TextChanged.Add(fun _ -> rebindToView syms)
-    controls.filterTextType.SelectionChanged.Add(fun _ -> rebindToView syms)
-    controls.filterSize.TextChanged.Add(fun _ -> rebindToView syms)
+let updateFilterUI ess =
+    controls.filterText.TextChanged.Add(fun _ -> rebindToView ess)
+    controls.filterTextType.SelectionChanged.Add(fun _ -> rebindToView ess)
+    controls.filterSize.TextChanged.Add(fun _ -> rebindToView ess)
 
     controls.filterSections.SelectionChanged.Add(fun e ->
         if controls.filterSections.SelectedIndex >= 0 then
             controls.filterSections.SelectedIndex <- -1)
 
-    for section in syms |> Seq.map (fun sym -> sym.section) |> set do
+    for section in ess.Sections do
         let sectionName = if section = "" then "<other>" else section
         let item = CheckBox(Content = section, IsChecked = Nullable<bool>(true), Tag = section)
-        item.Unchecked.Add(fun _ -> rebindToView syms)
-        item.Checked.Add(fun _ -> rebindToView syms)
+        item.Unchecked.Add(fun _ -> rebindToView ess)
+        item.Checked.Add(fun _ -> rebindToView ess)
         controls.filterSections.Items.Add(item) |> ignore
 
-    controls.groupPrefix.SelectionChanged.Add(fun _ -> rebindToView syms)
-    controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView syms)
+    controls.groupPrefix.SelectionChanged.Add(fun _ -> rebindToView ess)
+    controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView ess)
 
 let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
 
@@ -346,15 +347,13 @@ let updateSymbolUI (ess: ISymbolSource) =
 
 let bindToViewAsync (ess: ISymbolSource) =
     async {
-        let symbols = ess.Symbols |> Seq.toArray
-
         do! AsyncUI.switchToUI ()
 
-        updateDisplayUI symbols
-        updateFilterUI symbols
+        updateDisplayUI ess
+        updateFilterUI ess
         updateSymbolUI ess
 
-        do! rebindToViewAsync symbols
+        do! rebindToViewAsync ess
     }
 
 window.Loaded.Add(fun _ ->
