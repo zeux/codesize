@@ -76,15 +76,16 @@ module private binutils =
         // this makes sure that if an empty and non-empty symbols share an address, padded size is correctly attributed
         let symbols = syms |> Array.sortBy (fun (addr, size, _, _) -> addr * 2UL + (if size = 0UL then 0UL else 1UL))
 
-        // some symbols don't have size information, so we compute the size as an address difference (this also takes alignment waste into account)
+        // some symbols don't have size information, so we compute the size as an address difference
+        // (this also takes alignment waste into account)
         // the exception is the last symbol, which we should just take the size from
-        let result =
-            symbols
-            |> Seq.pairwise
-            |> Seq.map (fun ((addr, size, typ, name), (next, _, _, _)) -> addr, next - addr, typ, name)
-            |> Seq.toArray
-
-        Array.append result (if symbols.Length > 0 then [| symbols.[symbols.Length - 1] |] else [||])
+        symbols
+        |> Array.mapi (fun i (addr, size, typ, name) ->
+            if i + 1 < symbols.Length then
+                let (next, _, _, _) = symbols.[i + 1]
+                addr, next - addr, typ, name
+            else
+                addr, size, typ, name)
 
     // fix the address/size pairs to make sure no pair overlaps a symbol
     let fixSizesSymBounds syms data =
