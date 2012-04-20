@@ -101,7 +101,7 @@
                         <RowDefinition Height="20" />
                         <RowDefinition Height="80" />
                     </Grid.RowDefinitions>
-                    <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden">
+                    <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" SelectionMode="Single">
                         <ListView.ItemTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding Converter={conv:SymbolListItem}}" />
