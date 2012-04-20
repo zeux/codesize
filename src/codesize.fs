@@ -20,6 +20,8 @@ let getSymbolSource path =
     | e ->
         failwithf "Unknown extension %s" e
 
+let app = Application(ShutdownMode = ShutdownMode.OnMainWindowClose)
+
 let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Relative)) :?> Window
 
 module controls =
@@ -54,8 +56,6 @@ module controls =
     let symbolLocationLink = window?SymbolLocationLink :?> Hyperlink
     let symbolSize = window?SymbolSize :?> TextBox
     let symbolAddress = window?SymbolAddress :?> TextBox
-
-let app = Application()
 
 let treeViewBinding = TreeView.Binding(controls.treeView)
 
