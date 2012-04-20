@@ -12,6 +12,7 @@ type SelfSymbolSource(path) =
     let ess = ElfSymbolSource(path, offset = int offset) :> ISymbolSource
 
     interface ISymbolSource with
+        member this.Sections = ess.Sections
         member this.Symbols = ess.Symbols
         member this.FileLines = ess.FileLines
         member this.GetFileLine address = ess.GetFileLine address

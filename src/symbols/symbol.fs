@@ -14,7 +14,8 @@ type FileLine =
 
 [<Interface>]
 type ISymbolSource =
-    abstract member Symbols: seq<Symbol>
-    abstract member FileLines: seq<FileLine>
+    abstract member Sections: string[]
+    abstract member Symbols: Symbol[]
+    abstract member FileLines: FileLine[]
 
     abstract member GetFileLine: uint64 -> (string * int) option

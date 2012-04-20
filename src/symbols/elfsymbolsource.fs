@@ -58,6 +58,9 @@ module private binutils =
 
         data
 
+    // valid section list
+    let sectionList = "tTdDrRbB"
+
     // convert section type to readable name
     let getSectionName typ =
         match typ with
@@ -109,7 +112,7 @@ type ElfSymbolSource(path, ?offset) =
             |> Array.map (fun s -> s.address, s.size, (char s.typ), Marshal.PtrToStringAnsi(s.name))
 
         data
-        |> Array.filter (fun (_, _, typ, name) -> "tTbBdDrR".IndexOf(typ) <> -1 && name.StartsWith("LANCHOR") = false)
+        |> Array.filter (fun (_, _, typ, name) -> binutils.sectionList.IndexOf(typ) <> -1 && name.StartsWith("LANCHOR") = false)
         |> binutils.fixSizes
         |> Array.map (fun (address, size, typ, name) ->
             { address = address; size = size; section = binutils.getSectionName typ; name = name })
@@ -139,12 +142,13 @@ type ElfSymbolSource(path, ?offset) =
         binutils.buClose file
 
     interface ISymbolSource with
-        member this.Symbols = symbols.Value |> Array.toSeq
-        member this.FileLines = filelines.Value |> Array.toSeq
+        member this.Sections = binutils.sectionList |> Seq.map binutils.getSectionName |> set |> Set.toArray
+        member this.Symbols = symbols.Value
+        member this.FileLines = filelines.Value
 
         member this.GetFileLine address =
             // buGetFileLine is not thread-safe
-            lock fileLineLock <| fun _ ->
+            lock fileLineLock $ fun _ ->
 
             let mutable filename = null
             let mutable line = 0
