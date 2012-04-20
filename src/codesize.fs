@@ -15,6 +15,7 @@ open Symbols
 let app = Application(ShutdownMode = ShutdownMode.OnMainWindowClose)
 
 let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Relative)) :?> Window
+let editor = lazy Editor.Window()
 
 module controls =
     type DisplayData =
@@ -261,8 +262,6 @@ let getStatsFile files =
 
     totalSize.ToString("#,0")
 
-let rebindToViewAgent = AsyncUI.SingleUpdateAgent()
-
 let deactivateView (view: ItemsControl) =
     view.ItemsSource <- null
     view.Visibility <- Visibility.Hidden
@@ -356,6 +355,8 @@ let rebindToViewAsync (ess: ISymbolSource) =
         | :? OperationCanceledException -> ()
     }
     
+let rebindToViewAgent = AsyncUI.SingleUpdateAgent()
+
 let rebindToView ess =
     rebindToViewAgent.Post(rebindToViewAsync ess)
 
@@ -383,8 +384,6 @@ let updateFilterUI ess =
     controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView ess)
 
 let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
-
-let editor = lazy Editor.Window()
 
 let updateSelectedSymbol (ess: ISymbolSource) (item: obj) =
     match item with
@@ -417,17 +416,46 @@ let updateSelectedSymbol (ess: ISymbolSource) (item: obj) =
         controls.symbolSize.Text <- ""
         controls.symbolAddress.Text <- ""
 
-let jumpToCurrentFile () =
-    match controls.symbolLocationLink.Tag with
-    | :? (string * int) as fl -> editor.Value.Open(fst fl, snd fl)
+let jumpToAgent = AsyncUI.SingleUpdateAgent()
+
+let jumpToSymbol (ess: ISymbolSource) (sym: Symbol) =
+    async {
+        do! AsyncUI.switchToWork ()
+
+        let fl =
+            match ess.GetFileLine sym.address with
+            | Some (file, line) when File.Exists(file) -> Some (file, line)
+            | _ -> None
+
+        do! AsyncUI.switchToUI ()
+
+        match fl with
+        | Some (file, line) -> editor.Value.Open(file, line)
+        | None -> ()
+    }
+
+let jumpToFile file =
+    if File.Exists(file.file) then
+        editor.Value.Open(file.file, file.lineBegin, highlightRange = (file.lineBegin, file.lineEnd))
+
+let jumpToItem ess (item: obj) =
+    match item with
+    | :? Symbol as sym -> jumpToAgent.Post(jumpToSymbol ess sym)
+    | :? FileLineRange as file -> jumpToFile file
     | _ -> ()
 
 let updateSymbolUI (ess: ISymbolSource) =
-    controls.symbolLocationLink.Click.Add(fun _ -> jumpToCurrentFile ())
+    controls.symbolLocationLink.Click.Add(fun _ ->
+        match controls.symbolLocationLink.Tag with
+        | :? (string * int) as fl -> editor.Value.Open(fst fl, snd fl)
+        | _ -> ())
 
-    // Ideally we should do resolve ourselves here, but it's too much work for now
-    controls.contentsTree.MouseDoubleClick.Add(fun _ -> jumpToCurrentFile ())
-    controls.contentsList.MouseDoubleClick.Add(fun _ -> jumpToCurrentFile ())
+    controls.contentsTree.MouseDoubleClick.Add(fun _ ->
+        let item = controls.contentsTree.SelectedItem :?> TreeViewItem
+        jumpToItem ess (if item = null then null else item.Tag))
+
+    controls.contentsList.MouseDoubleClick.Add(fun _ ->
+        jumpToItem ess controls.contentsList.SelectedItem)
 
     controls.contentsTree.SelectedItemChanged.Add(fun _ ->
         let item = controls.contentsTree.SelectedItem :?> TreeViewItem
