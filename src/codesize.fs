@@ -1,4 +1,5 @@
 open System
+open System.Collections.Generic
 open System.IO
 open System.Text
 open System.Text.RegularExpressions
@@ -11,20 +12,15 @@ open Symbols
 
 [<STAThread>] do ()
 
-let getSymbolSource path =
-    match Path.GetExtension(path).ToLower() with
-    | ".elf" ->
-        ElfSymbolSource(path) :> ISymbolSource
-    | ".self" ->
-        SelfSymbolSource(path) :> ISymbolSource
-    | e ->
-        failwithf "Unknown extension %s" e
-
 let app = Application(ShutdownMode = ShutdownMode.OnMainWindowClose)
 
 let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Relative)) :?> Window
 
 module controls =
+    type DisplayData =
+    | Symbols = 0
+    | Files = 1
+
     type DisplayView =
     | Tree = 0
     | List = 1
@@ -86,6 +82,12 @@ let getFilterTextFn typ (text: string) =
     | _ ->
         failwithf "Unknown type %O" typ
 
+type FileLineRange =
+    { size: uint64
+      file: string
+      lineBegin: int
+      lineEnd: int }
+
 let getFilterSymbolFn () =
     let ft = getFilterTextFn (enum controls.filterTextType.SelectedIndex) controls.filterText.Text
     let fs =
@@ -102,6 +104,15 @@ let getFilterSymbolFn () =
         fun section -> Set.contains section sections
 
     fun sym -> ft sym.name && fs sym.size && fg sym.section
+
+let getFilterFileFn () =
+    let ft = getFilterTextFn (enum controls.filterTextType.SelectedIndex) controls.filterText.Text
+    let fs =
+        match UInt64.TryParse(controls.filterSize.Text) with
+        | true, limit -> fun size -> size >= limit
+        | _ -> fun size -> true
+
+    fun file -> ft file.file && fs file.size
 
 let templateConvertArgsImpl (name: string) (convarg: string -> string) =
     let res = StringBuilder()
@@ -188,10 +199,44 @@ let getPrefixSymbolFn () =
     | _ ->
         failwithf "Unknown type %O" gp
 
+let getLineRangesForFile file (lines: FileLine seq) =
+    let ranges = Stack<FileLineRange>()
+
+    for fl in lines |> Seq.sortBy (fun fl -> fl.line) do
+        if ranges.Count > 0 && (let top = ranges.Peek() in top.lineEnd + 1 = fl.line) then
+            let top = ranges.Pop()
+            ranges.Push({ size = top.size + fl.size; file = file; lineBegin = top.lineBegin; lineEnd = fl.line })
+        else
+            ranges.Push({ size = fl.size; file = file; lineBegin = fl.line; lineEnd = fl.line })
+
+    ranges.ToArray()
+
+let getLineRanges (ess: ISymbolSource) =
+    let normalizePath =
+        let cache = Dictionary<string, string>()
+        fun path ->
+            let mutable value = null
+            if cache.TryGetValue(path, &value) then value
+            else
+                let result = try Path.GetFullPath(path).ToLower() with _ -> path.ToLower()
+                cache.Add(path, result)
+                result
+
+    ess.FileLines
+    |> Seq.groupBy (fun fl -> normalizePath fl.file)
+    |> Seq.toArray
+    |> Array.collect (fun (file, lines) -> getLineRangesForFile file lines)
+
 let getSymbolText sym =
     sym.name + (if sym.section = "" then "" else " [" + sym.section + "]")
 
-let getStats syms =
+let getFileText file =
+    if file.lineBegin = file.lineEnd then
+        sprintf "%s:%d" file.file file.lineBegin
+    else
+        sprintf "%s:%d-%d" file.file file.lineBegin file.lineEnd
+
+let getStatsSymbol syms =
     // group symbols by section and find total size for each section
     let sections =
         syms
@@ -211,6 +256,11 @@ let getStats syms =
     // statistics string
     totalSize.ToString("#,0") + (if sections.Length = 0 then "" else " (" + String.concat ", " sizes + ")")
 
+let getStatsFile files =
+    let totalSize = files |> Array.sumBy (fun f -> f.size)
+
+    totalSize.ToString("#,0")
+
 let rebindToViewAgent = AsyncUI.SingleUpdateAgent()
 
 let deactivateView (view: ItemsControl) =
@@ -220,14 +270,69 @@ let deactivateView (view: ItemsControl) =
 let activateView (view: ItemsControl) =
     view.Visibility <- Visibility.Visible
 
-let rebindToViewAsync (ess: ISymbolSource) =
+let rebindToViewSymbolsAsync (ess: ISymbolSource) view =
     async {
-        do! AsyncUI.switchToUI ()
+        let! token = Async.CancellationToken
 
         let filter = getFilterSymbolFn ()
         let group = getGroupSymbolFn ()
         let prefix = getPrefixSymbolFn ()
+
+        do! AsyncUI.switchToWork ()
+
+        let syms = ess.Symbols |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
+        let stats = getStatsSymbol syms
+
+        match view with
+        | controls.DisplayView.Tree ->
+            let items = syms |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
+
+            do! AsyncUI.switchToUI ()
+            treeViewBinding.Update(items, getSymbolText, prefix)
+        | controls.DisplayView.List ->
+            let items = syms |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
+
+            do! AsyncUI.switchToUI ()
+            controls.contentsList.ItemsSource <- items
+        | e -> failwithf "Unknown view %O" e
+
+        controls.labelStatus.Text <- "Total: " + stats
+    }
+
+let rebindToViewFilesAsync (ess: ISymbolSource) view =
+    async {
+        let! token = Async.CancellationToken
+
+        let filter = getFilterFileFn ()
+        let prefix = getPrefixSymbolFn ()
+
+        do! AsyncUI.switchToWork ()
+
+        let files = getLineRanges ess |> Array.filter (fun file -> token.ThrowIfCancellationRequested(); filter file)
+        let stats = getStatsFile files
+
+        match view with
+        | controls.DisplayView.Tree ->
+            let items = files |> Array.map (fun file -> token.ThrowIfCancellationRequested(); int file.size, file.file, file)
+
+            do! AsyncUI.switchToUI ()
+            treeViewBinding.Update(items, getFileText, prefix)
+        | controls.DisplayView.List ->
+            let items = files |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
+
+            do! AsyncUI.switchToUI ()
+            controls.contentsList.ItemsSource <- items
+        | e -> failwithf "Unknown view %O" e
+
+        controls.labelStatus.Text <- "Total: " + stats
+    }
+
+let rebindToViewAsync (ess: ISymbolSource) =
+    async {
+        do! AsyncUI.switchToUI ()
+
         let view = enum controls.displayView.SelectedIndex
+        let data = enum controls.displayData.SelectedIndex
 
         match view with
         | controls.DisplayView.Tree ->
@@ -241,27 +346,12 @@ let rebindToViewAsync (ess: ISymbolSource) =
         controls.labelStatus.Text <- "Filtering..."
 
         try
-            do! AsyncUI.switchToWork ()
-
-            let! token = Async.CancellationToken
-
-            let syms = ess.Symbols |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
-            let stats = getStats syms
-
-            match view with
-            | controls.DisplayView.Tree ->
-                let items = syms |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
-
-                do! AsyncUI.switchToUI ()
-                treeViewBinding.Update(items, getSymbolText, prefix)
-            | controls.DisplayView.List ->
-                let items = syms |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
-
-                do! AsyncUI.switchToUI ()
-                controls.contentsList.ItemsSource <- items
-            | e -> failwithf "Unknown view %O" e
-
-            controls.labelStatus.Text <- "Total: " + stats
+            match data with
+            | controls.DisplayData.Symbols ->
+                do! rebindToViewSymbolsAsync ess view
+            | controls.DisplayData.Files ->
+                do! rebindToViewFilesAsync ess view
+            | e -> failwithf "Unknown data %O" e
         with
         | :? OperationCanceledException -> ()
     }
@@ -270,6 +360,7 @@ let rebindToView ess =
     rebindToViewAgent.Post(rebindToViewAsync ess)
 
 let updateDisplayUI ess =
+    controls.displayData.SelectionChanged.Add(fun _ -> rebindToView ess)
     controls.displayView.SelectionChanged.Add(fun _ -> rebindToView ess)
 
 let updateFilterUI ess =
@@ -355,6 +446,15 @@ let bindToViewAsync (ess: ISymbolSource) =
 
         do! rebindToViewAsync ess
     }
+
+let getSymbolSource path =
+    match Path.GetExtension(path).ToLower() with
+    | ".elf" ->
+        ElfSymbolSource(path) :> ISymbolSource
+    | ".self" ->
+        SelfSymbolSource(path) :> ISymbolSource
+    | e ->
+        failwithf "Unknown extension %s" e
 
 window.Loaded.Add(fun _ ->
     let path =
