@@ -6,4 +6,5 @@
 - 'guard variable for', 'vtable for', 'non-virtual thunk to' are usually useful as suffixes - grouping option? (ideally need to xform symbol names here)
 - autosave/load UI settings to config file
 - refactor some code with wpf bindings
-- async file/line lookup for symbol info
+- better async wpf helpers
+- set/reset root for treeview
