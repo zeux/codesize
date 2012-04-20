@@ -105,8 +105,8 @@ static bool try_parse_cu_header(
     bfd* abfd,
     unsigned char* data, unsigned char* end, DWARF2_Internal_LineInfo& linfo, unsigned char*& standard_opcodes, unsigned char*& end_of_sequence)
 {
-    int initial_length_size;
-    int offset_size;
+    unsigned int initial_length_size;
+    unsigned int offset_size;
 
     unsigned char *hdrptr = data;
 
@@ -143,7 +143,7 @@ static bool try_parse_cu_header(
         return false;
     }
 
-    if (linfo.li_length + initial_length_size > end - data)
+    if (linfo.li_length + initial_length_size > (unsigned int)(end - data))
     {
         // The line info appears to be corrupt - the section is too small.
         return false;
@@ -474,13 +474,14 @@ static bool display_debug_lines_decoded (bfd* abfd, unsigned char *data, bfd_siz
         }
     }
 
-    return 0;
+    return true;
 }
 
 struct DecodedLineProcessContext
 {
     DecodedLineVM* vm;
     asymbol** symtab;
+    bool result;
 
     static void dump_dwarf_section (bfd *abfd, asection *sec, void *arg)
     {
@@ -493,21 +494,19 @@ struct DecodedLineProcessContext
             bfd_size_type size = bfd_get_section_size (sec);
 
             unsigned char* start = bfd_simple_get_relocated_section_contents(abfd, sec, 0, ctx->symtab);
+            bool success = start ? display_debug_lines_decoded (abfd, start, size, ctx->vm) : false;
 
-            if (start)
-            {
-                display_debug_lines_decoded (abfd, start, size, ctx->vm);
+            free(start);
 
-                free(start);
-            }
+            ctx->result &= success;
         }
     }
 };
 
 bool decodedLineProcess(bfd* abfd, asymbol** symtab, DecodedLineVM* vm)
 {
-    DecodedLineProcessContext context = {vm, symtab};
+    DecodedLineProcessContext context = {vm, symtab, true};
     bfd_map_over_sections(abfd, DecodedLineProcessContext::dump_dwarf_section, &context);
 
-    return true;
+    return context.result;
 }
