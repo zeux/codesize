@@ -94,14 +94,15 @@
                     </StackPanel>
                 </Grid>
             </TabItem>
-            <TabItem Header="TabTreeView" Name="TabTreeView" Visibility="Collapsed">
+            <TabItem Header="TabContents" Name="TabContents" Visibility="Collapsed">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
                         <RowDefinition Height="20" />
                         <RowDefinition Height="80" />
                     </Grid.RowDefinitions>
-                    <TreeView Name="TreeView" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" />
+                    <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" />
+                    <TreeView Name="ContentsTree" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" />
                     <GridSplitter Grid.Row="1" ResizeDirection="Rows" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="Auto" Background="WhiteSmoke" />
                     <GroupBox Grid.Row="1" Grid.RowSpan="2" Header="Symbol" Background="WhiteSmoke" Padding="4">
                         <Grid>
@@ -127,11 +128,6 @@
                             <TextBox Name="SymbolAddress" Grid.Row="3" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
                         </Grid>
                     </GroupBox>
-                </Grid>
-            </TabItem>
-            <TabItem Header="TabList" Name="TabList" Visibility="Collapsed">
-                <Grid>
-                    <ListView Name="ListView" VirtualizingStackPanel.IsVirtualizing="True" />
                 </Grid>
             </TabItem>
         </TabControl>

@@ -25,6 +25,10 @@ let app = Application(ShutdownMode = ShutdownMode.OnMainWindowClose)
 let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Relative)) :?> Window
 
 module controls =
+    type DisplayView =
+    | Tree = 0
+    | List = 1
+
     type FilterTextType =
     | Words = 0
     | Phrase = 1
@@ -39,8 +43,6 @@ module controls =
     | Letter = 0
     | Word = 1
 
-    let treeView = window?TreeView :?> TreeView
-    let listView = window?ListView :?> ListView
     let displayData = window?DisplayData :?> ComboBox 
     let displayView = window?DisplayView :?> ComboBox
     let filterText = window?FilterText :?> TextBox
@@ -51,8 +53,7 @@ module controls =
     let groupPrefix = window?GroupPrefix :?> ComboBox
     let tabControl = window?TabControl :?> TabControl
     let tabLoading = window?TabLoading :?> TabItem
-    let tabTreeView = window?TabTreeView :?> TabItem
-    let tabListView = window?TabListView :?> TabItem
+    let tabContents = window?TabContents :?> TabItem
     let labelLoading = window?LabelLoading :?> TextBlock
     let labelStatus = window?LabelStatus :?> TextBlock
     let symbolName = window?SymbolName :?> TextBox
@@ -60,8 +61,10 @@ module controls =
     let symbolLocationLink = window?SymbolLocationLink :?> Hyperlink
     let symbolSize = window?SymbolSize :?> TextBox
     let symbolAddress = window?SymbolAddress :?> TextBox
+    let contentsTree = window?ContentsTree :?> TreeView
+    let contentsList = window?ContentsList :?> ListView
 
-let treeViewBinding = TreeView.Binding(controls.treeView)
+let treeViewBinding = TreeView.Binding(controls.contentsTree)
 
 let getFilterTextFn typ (text: string) =
     let contains (s: string) (p: string) = s.IndexOf(p, StringComparison.InvariantCultureIgnoreCase) >= 0
@@ -210,6 +213,13 @@ let getStats syms =
 
 let rebindToViewAgent = AsyncUI.SingleUpdateAgent()
 
+let deactivateView (view: ItemsControl) =
+    view.ItemsSource <- null
+    view.Visibility <- Visibility.Hidden
+
+let activateView (view: ItemsControl) =
+    view.Visibility <- Visibility.Visible
+
 let rebindToViewAsync syms =
     async {
         do! AsyncUI.switchToUI ()
@@ -217,6 +227,16 @@ let rebindToViewAsync syms =
         let filter = getFilterSymbolFn ()
         let group = getGroupSymbolFn ()
         let prefix = getPrefixSymbolFn ()
+        let view = enum controls.displayView.SelectedIndex
+
+        match view with
+        | controls.DisplayView.Tree ->
+            deactivateView controls.contentsList
+            activateView controls.contentsTree
+        | controls.DisplayView.List ->
+            deactivateView controls.contentsTree
+            activateView controls.contentsList
+        | e -> failwithf "Unknown view %O" e
 
         controls.labelStatus.Text <- "Filtering..."
 
@@ -226,17 +246,34 @@ let rebindToViewAsync syms =
             let! token = Async.CancellationToken
             let fs = syms |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
             let stats = getStats fs
-            let items = fs |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
 
-            do! AsyncUI.switchToUI ()
-            treeViewBinding.Update(items, getSymbolText, prefix)
+            match view with
+            | controls.DisplayView.Tree ->
+                let items = fs |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
+
+                do! AsyncUI.switchToUI ()
+                treeViewBinding.Update(items, getSymbolText, prefix)
+            | controls.DisplayView.List ->
+                let items =
+                    fs
+                    |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
+                    |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); sym.size.ToString("#,0 ") + getSymbolText sym, sym)
+
+                do! AsyncUI.switchToUI ()
+                controls.contentsList.ItemsSource <-
+                    items |> Array.map (fun (text, sym) -> token.ThrowIfCancellationRequested(); ListViewItem(Content = text, Tag = sym))
+            | e -> failwithf "Unknown view %O" e
 
             controls.labelStatus.Text <- "Total: " + stats
-        with e -> ()
+        with
+        | :? OperationCanceledException -> ()
     }
     
 let rebindToView syms =
     rebindToViewAgent.Post(rebindToViewAsync syms)
+
+let updateDisplayUI syms =
+    controls.displayView.SelectionChanged.Add(fun _ -> rebindToView syms)
 
 let updateFilterUI syms =
     controls.filterText.TextChanged.Add(fun _ -> rebindToView syms)
@@ -261,51 +298,59 @@ let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
 
 let editor = lazy Editor.Window()
 
+let updateSelectedSymbol (ess: ISymbolSource) (item: obj) =
+    let tag =
+        match item with
+        | :? FrameworkElement as e -> e.Tag
+        | _ -> null
+
+    match tag with
+    | :? Symbols.Symbol as sym ->
+        controls.symbolName.Text <- sym.name
+        controls.symbolLocation.Text <- "resolving..."
+        controls.symbolLocationLink.Tag <- null
+        controls.symbolAddress.Text <- "0x" + sym.address.ToString("x")
+        controls.symbolSize.Text <- sym.size.ToString("#,0")
+
+        async {
+            do! AsyncUI.switchToWork ()
+
+            let text, tag =
+                match ess.GetFileLine sym.address with
+                | Some (file, line) ->
+                    sprintf "%s (%d)" file line, (if File.Exists(file) then box (file, line) else null)
+                | None ->
+                    "unknown", null
+
+            do! AsyncUI.switchToUI ()
+
+            controls.symbolLocation.Text <- text
+            controls.symbolLocationLink.Tag <- tag
+        } |> updateSymbolLocationAgent.Post
+    | _ ->
+        controls.symbolName.Text <- ""
+        controls.symbolLocation.Text <- ""
+        controls.symbolLocationLink.Tag <- null
+        controls.symbolSize.Text <- ""
+        controls.symbolAddress.Text <- ""
+
+let jumpToCurrentFile () =
+    match controls.symbolLocationLink.Tag with
+    | :? (string * int) as fl -> editor.Value.Open(fst fl, snd fl)
+    | _ -> ()
+
 let updateSymbolUI (ess: ISymbolSource) =
-    controls.symbolLocationLink.Click.Add(fun _ ->
-        match controls.symbolLocationLink.Tag with
-        | :? (string * int) as fl -> editor.Value.Open(fst fl, snd fl)
-        | _ -> ())
-    
+    controls.symbolLocationLink.Click.Add(fun _ -> jumpToCurrentFile ())
+
     // Ideally we should do resolve ourselves here, but it's too much work for now
-    controls.treeView.MouseDoubleClick.Add(fun _ ->
-        match controls.symbolLocationLink.Tag with
-        | :? (string * int) as fl -> editor.Value.Open(fst fl, snd fl)
-        | _ -> ())
+    controls.contentsTree.MouseDoubleClick.Add(fun _ -> jumpToCurrentFile ())
+    controls.contentsList.MouseDoubleClick.Add(fun _ -> jumpToCurrentFile ())
 
-    controls.treeView.SelectedItemChanged.Add(fun _ ->
-        let item = (controls.treeView.SelectedItem :?> TreeViewItem)
-        let tag = (if item = null then null else item.Tag)
+    controls.contentsTree.SelectedItemChanged.Add(fun _ ->
+        updateSelectedSymbol ess controls.contentsTree.SelectedItem)
 
-        match tag with
-        | :? Symbols.Symbol as sym ->
-            controls.symbolName.Text <- sym.name
-            controls.symbolLocation.Text <- "resolving..."
-            controls.symbolLocationLink.Tag <- null
-            controls.symbolAddress.Text <- "0x" + sym.address.ToString("x")
-            controls.symbolSize.Text <- sym.size.ToString("#,0")
-
-            async {
-                do! AsyncUI.switchToWork ()
-                let fl = ess.GetFileLine sym.address
-
-                do! AsyncUI.switchToUI ()
-                let text, tag =
-                    match fl with
-                    | Some (file, line) ->
-                        sprintf "%s (%d)" file line, (if File.Exists(file) then box (file, line) else null)
-                    | None ->
-                        "unknown", null
-
-                controls.symbolLocation.Text <- text
-                controls.symbolLocationLink.Tag <- tag
-            } |> updateSymbolLocationAgent.Post
-        | _ ->
-            controls.symbolName.Text <- ""
-            controls.symbolLocation.Text <- ""
-            controls.symbolLocationLink.Tag <- null
-            controls.symbolSize.Text <- ""
-            controls.symbolAddress.Text <- "")
+    controls.contentsList.SelectionChanged.Add(fun _ ->
+        updateSelectedSymbol ess controls.contentsList.SelectedItem)
 
 let bindToViewAsync (ess: ISymbolSource) =
     async {
@@ -313,6 +358,7 @@ let bindToViewAsync (ess: ISymbolSource) =
 
         do! AsyncUI.switchToUI ()
 
+        updateDisplayUI symbols
         updateFilterUI symbols
         updateSymbolUI ess
 
@@ -336,7 +382,7 @@ window.Loaded.Add(fun _ ->
     async {
         let ess = getSymbolSource path
         do! bindToViewAsync ess
-        controls.tabTreeView.IsSelected <- true
+        controls.tabContents.IsSelected <- true
     } |> Async.Start)
 
 app.Run(window) |> ignore
