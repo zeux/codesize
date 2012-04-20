@@ -162,11 +162,10 @@ struct DecodedLineVMExtractor: DecodedLineVM
         assert(directory < dirtab.size());
 
         std::string path = dirtab[directory] + "/" + name;
-        unsigned int& pci = pathcache[path];
 
-        if (pci == 0) pci = pathcache.size();
+        auto it = pathcache.insert(std::make_pair(std::move(path), pathcache.size()));
 
-        filetab.push_back(pci);
+        filetab.push_back(it.first->second);
     }
 
     virtual void addLine(unsigned int file, unsigned int line, uint64_t address)
@@ -324,10 +323,8 @@ BuLinetab* buLinetabOpen(BuFile* file)
 
     for (auto& p: vm.pathcache)
     {
-        assert(p.second > 0);
-
         // not sure why moving the map key compiles, but it's for the best since it saves reallocations
-        files[p.second - 1] = std::move(p.first);
+        files[p.second] = std::move(p.first);
     }
 
     return new BuLinetab(std::move(files), std::move(vm.lines));
