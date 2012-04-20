@@ -206,7 +206,7 @@ let getLineRangesForFile file (lines: FileLine seq) =
     let ranges = Stack<FileLineRange>()
 
     for fl in lines |> Seq.sortBy (fun fl -> fl.line) do
-        if ranges.Count > 0 && (let top = ranges.Peek() in top.lineEnd + 1 = fl.line) then
+        if ranges.Count > 0 && (let top = ranges.Peek() in top.lineEnd = fl.line || top.lineEnd + 1 = fl.line) then
             let top = ranges.Pop()
             ranges.Push({ size = top.size + fl.size; file = file; lineBegin = top.lineBegin; lineEnd = fl.line })
         else
