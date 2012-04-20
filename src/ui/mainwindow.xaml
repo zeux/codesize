@@ -101,7 +101,13 @@
                         <RowDefinition Height="20" />
                         <RowDefinition Height="80" />
                     </Grid.RowDefinitions>
-                    <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" />
+                    <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={conv:SymbolListItem}}" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
                     <TreeView Name="ContentsTree" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" />
                     <GridSplitter Grid.Row="1" ResizeDirection="Rows" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="Auto" Background="WhiteSmoke" />
                     <GroupBox Grid.Row="1" Grid.RowSpan="2" Header="Symbol" Background="WhiteSmoke" Padding="4">

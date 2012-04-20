@@ -254,14 +254,10 @@ let rebindToViewAsync syms =
                 do! AsyncUI.switchToUI ()
                 treeViewBinding.Update(items, getSymbolText, prefix)
             | controls.DisplayView.List ->
-                let items =
-                    fs
-                    |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
-                    |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); sym.size.ToString("#,0 ") + getSymbolText sym, sym)
+                let items = fs |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
 
                 do! AsyncUI.switchToUI ()
-                controls.contentsList.ItemsSource <-
-                    items |> Array.map (fun (text, sym) -> token.ThrowIfCancellationRequested(); ListViewItem(Content = text, Tag = sym))
+                controls.contentsList.ItemsSource <- items
             | e -> failwithf "Unknown view %O" e
 
             controls.labelStatus.Text <- "Total: " + stats
@@ -299,13 +295,8 @@ let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
 let editor = lazy Editor.Window()
 
 let updateSelectedSymbol (ess: ISymbolSource) (item: obj) =
-    let tag =
-        match item with
-        | :? FrameworkElement as e -> e.Tag
-        | _ -> null
-
-    match tag with
-    | :? Symbols.Symbol as sym ->
+    match item with
+    | :? Symbol as sym ->
         controls.symbolName.Text <- sym.name
         controls.symbolLocation.Text <- "resolving..."
         controls.symbolLocationLink.Tag <- null
@@ -347,7 +338,8 @@ let updateSymbolUI (ess: ISymbolSource) =
     controls.contentsList.MouseDoubleClick.Add(fun _ -> jumpToCurrentFile ())
 
     controls.contentsTree.SelectedItemChanged.Add(fun _ ->
-        updateSelectedSymbol ess controls.contentsTree.SelectedItem)
+        let item = controls.contentsTree.SelectedItem :?> TreeViewItem
+        updateSelectedSymbol ess (if item = null then null else item.Tag))
 
     controls.contentsList.SelectionChanged.Add(fun _ ->
         updateSelectedSymbol ess controls.contentsList.SelectedItem)
