@@ -8,103 +8,6 @@
 #include "dwarf.h"
 #include "dwarf2.h"
 
-typedef unsigned HOST_WIDEST_INT elf_vma;
-
-static elf_vma
-byte_get_little_endian (unsigned char *field, int size)
-{
-  switch (size)
-    {
-    case 1:
-      return *field;
-
-    case 2:
-      return  ((unsigned int) (field[0]))
-	|    (((unsigned int) (field[1])) << 8);
-
-    case 3:
-      return  ((unsigned long) (field[0]))
-	|    (((unsigned long) (field[1])) << 8)
-	|    (((unsigned long) (field[2])) << 16);
-
-    case 4:
-      return  ((unsigned long) (field[0]))
-	|    (((unsigned long) (field[1])) << 8)
-	|    (((unsigned long) (field[2])) << 16)
-	|    (((unsigned long) (field[3])) << 24);
-
-    case 8:
-      if (sizeof (elf_vma) == 8)
-	return  ((elf_vma) (field[0]))
-	  |    (((elf_vma) (field[1])) << 8)
-	  |    (((elf_vma) (field[2])) << 16)
-	  |    (((elf_vma) (field[3])) << 24)
-	  |    (((elf_vma) (field[4])) << 32)
-	  |    (((elf_vma) (field[5])) << 40)
-	  |    (((elf_vma) (field[6])) << 48)
-	  |    (((elf_vma) (field[7])) << 56);
-      else if (sizeof (elf_vma) == 4)
-	/* We want to extract data from an 8 byte wide field and
-	   place it into a 4 byte wide field.  Since this is a little
-	   endian source we can just use the 4 byte extraction code.  */
-	return  ((unsigned long) (field[0]))
-	  |    (((unsigned long) (field[1])) << 8)
-	  |    (((unsigned long) (field[2])) << 16)
-	  |    (((unsigned long) (field[3])) << 24);
-
-    default:
-        return 0;
-    }
-}
-
-static elf_vma
-byte_get_big_endian (unsigned char *field, int size)
-{
-  switch (size)
-    {
-    case 1:
-      return *field;
-
-    case 2:
-      return ((unsigned int) (field[1])) | (((int) (field[0])) << 8);
-
-    case 3:
-      return ((unsigned long) (field[2]))
-	|   (((unsigned long) (field[1])) << 8)
-	|   (((unsigned long) (field[0])) << 16);
-
-    case 4:
-      return ((unsigned long) (field[3]))
-	|   (((unsigned long) (field[2])) << 8)
-	|   (((unsigned long) (field[1])) << 16)
-	|   (((unsigned long) (field[0])) << 24);
-
-    case 8:
-      if (sizeof (elf_vma) == 8)
-	return ((elf_vma) (field[7]))
-	  |   (((elf_vma) (field[6])) << 8)
-	  |   (((elf_vma) (field[5])) << 16)
-	  |   (((elf_vma) (field[4])) << 24)
-	  |   (((elf_vma) (field[3])) << 32)
-	  |   (((elf_vma) (field[2])) << 40)
-	  |   (((elf_vma) (field[1])) << 48)
-	  |   (((elf_vma) (field[0])) << 56);
-      else if (sizeof (elf_vma) == 4)
-	{
-	  /* Although we are extracing data from an 8 byte wide field,
-	     we are returning only 4 bytes of data.  */
-	  field += 4;
-	  return ((unsigned long) (field[3]))
-	    |   (((unsigned long) (field[2])) << 8)
-	    |   (((unsigned long) (field[1])) << 16)
-	    |   (((unsigned long) (field[0])) << 24);
-	}
-
-    default:
-        return 0;
-    }
-}
-
 dwarf_vma
 read_leb128 (unsigned char *data, unsigned int *length_return, int sign)
 {
@@ -141,6 +44,38 @@ read_sleb128 (unsigned char *data, unsigned int *length_return)
   return (dwarf_signed_vma) read_leb128 (data, length_return, 1);
 }
 
+static dwarf_vma read_address (bfd* abfd, bool signed_vma, bfd_byte *buf, unsigned int size)
+{
+    if (signed_vma)
+    {
+        switch (size)
+        {
+            case 8:
+                return bfd_get_signed_64 (abfd, buf);
+            case 4:
+                return bfd_get_signed_32 (abfd, buf);
+            case 2:
+                return bfd_get_signed_16 (abfd, buf);
+            default:
+                abort ();
+        }
+    }
+    else
+    {
+        switch (size)
+        {
+            case 8:
+                return bfd_get_64 (abfd, buf);
+            case 4:
+                return bfd_get_32 (abfd, buf);
+            case 2:
+                return bfd_get_16 (abfd, buf);
+            default:
+                abort ();
+        }
+    }
+}
+
 typedef struct State_Machine_Registers
 {
   dwarf_vma address;
@@ -167,7 +102,7 @@ reset_state_machine (SMR& state_machine_regs, int is_stmt)
 }
 
 static bool try_parse_cu_header(
-    elf_vma (*byte_get) (unsigned char *, int),
+    bfd* abfd,
     unsigned char* data, unsigned char* end, DWARF2_Internal_LineInfo& linfo, unsigned char*& standard_opcodes, unsigned char*& end_of_sequence)
 {
     int initial_length_size;
@@ -178,27 +113,34 @@ static bool try_parse_cu_header(
     /* Extract information from the Line Number Program Header.
        (section 6.2.4 in the Dwarf3 doc).  */
 
+    if (end - data < 12)
+    {
+        // Not enough space for the header length
+        return false;
+    }
+
     /* Get the length of this CU's line number information block.  */
-    linfo.li_length = byte_get (hdrptr, 4);
+    linfo.li_length = bfd_get_32 (abfd, hdrptr);
     hdrptr += 4;
 
     if (linfo.li_length == 0xffffffff)
     {
         /* This section is 64-bit DWARF 3.  */
-        linfo.li_length = byte_get (hdrptr, 8);
+        linfo.li_length = bfd_get_64 (abfd, hdrptr);
         hdrptr += 8;
         offset_size = 8;
         initial_length_size = 12;
-    }
-    else if (linfo.li_length == 0)
-    {
-        // Zero padding, need to resync
-        return false;
     }
     else
     {
         offset_size = 4;
         initial_length_size = 4;
+    }
+
+    if (linfo.li_length < 8 + offset_size)
+    {
+        // Length is too short for the header - corrupt header?
+        return false;
     }
 
     if (linfo.li_length + initial_length_size > end - data)
@@ -208,7 +150,7 @@ static bool try_parse_cu_header(
     }
 
     /* Get this CU's Line Number Block version number.  */
-    linfo.li_version = byte_get (hdrptr, 2);
+    linfo.li_version = bfd_get_16 (abfd, hdrptr);
     hdrptr += 2;
     if (linfo.li_version != 2
             && linfo.li_version != 3
@@ -218,13 +160,13 @@ static bool try_parse_cu_header(
         return false;
     }
 
-    linfo.li_prologue_length = byte_get (hdrptr, offset_size);
+    linfo.li_prologue_length = offset_size == 8 ? bfd_get_64 (abfd, hdrptr) : bfd_get_32(abfd, hdrptr);
     hdrptr += offset_size;
-    linfo.li_min_insn_length = byte_get (hdrptr, 1);
+    linfo.li_min_insn_length = bfd_get_8 (abfd, hdrptr);
     hdrptr++;
     if (linfo.li_version >= 4)
     {
-        linfo.li_max_ops_per_insn = byte_get (hdrptr, 1);
+        linfo.li_max_ops_per_insn = bfd_get_8 (abfd, hdrptr);
         hdrptr++;
         if (linfo.li_max_ops_per_insn == 0)
         {
@@ -235,7 +177,7 @@ static bool try_parse_cu_header(
     else
         linfo.li_max_ops_per_insn = 1;
 
-    linfo.li_default_is_stmt = byte_get (hdrptr, 1);
+    linfo.li_default_is_stmt = bfd_get_8 (abfd, hdrptr);
     if (linfo.li_default_is_stmt != 0 && linfo.li_default_is_stmt != 1)
     {
         // Invalid default is_stmt
@@ -243,11 +185,11 @@ static bool try_parse_cu_header(
     }
     hdrptr++;
 
-    linfo.li_line_base = byte_get (hdrptr, 1);
+    linfo.li_line_base = bfd_get_8 (abfd, hdrptr);
     hdrptr++;
-    linfo.li_line_range = byte_get (hdrptr, 1);
+    linfo.li_line_range = bfd_get_8 (abfd, hdrptr);
     hdrptr++;
-    linfo.li_opcode_base = byte_get (hdrptr, 1);
+    linfo.li_opcode_base = bfd_get_8 (abfd, hdrptr);
     hdrptr++;
 
     /* Sign extend the line base field.  */
@@ -264,10 +206,10 @@ static bool try_parse_cu_header(
 }
 
 static bool find_cu_header(
-    elf_vma (*byte_get) (unsigned char *, int),
+    bfd* abfd,
     unsigned char* data, unsigned char* end, DWARF2_Internal_LineInfo& linfo, unsigned char*& standard_opcodes, unsigned char*& end_of_sequence)
 {
-    if (try_parse_cu_header(byte_get, data, end, linfo, standard_opcodes, end_of_sequence))
+    if (try_parse_cu_header(abfd, data, end, linfo, standard_opcodes, end_of_sequence))
         return true;
 
     // It is possible to have a run of zero bytes between CUs. Ideally we should parse debug_abbrev,
@@ -275,7 +217,7 @@ static bool find_cu_header(
     while (data < end && *data == 0)
     {
         // Skip the rest byte by byte
-        if (try_parse_cu_header(byte_get, data, end, linfo, standard_opcodes, end_of_sequence))
+        if (try_parse_cu_header(abfd, data, end, linfo, standard_opcodes, end_of_sequence))
             return true;
 
         data++;
@@ -286,25 +228,25 @@ static bool find_cu_header(
 
 static bool display_debug_lines_decoded (bfd* abfd, unsigned char *data, bfd_size_type size, DecodedLineVM* vm)
 {
-    elf_vma (*byte_get) (unsigned char *, int) = bfd_little_endian(abfd) ? byte_get_little_endian : byte_get_big_endian;
+    bool signed_vma = bfd_get_sign_extend_vma(abfd) == 1;
 
     unsigned char* end = data + size;
 
     while (data < end)
     {
-        SMR state_machine_regs;
-
         /* This loop amounts to one iteration per compilation unit.  */
         DWARF2_Internal_LineInfo linfo;
         unsigned char *standard_opcodes;
         unsigned char *end_of_sequence;
 
         // Try to parse the header
-        if (!find_cu_header(byte_get, data, end, linfo, standard_opcodes, end_of_sequence))
+        if (!find_cu_header(abfd, data, end, linfo, standard_opcodes, end_of_sequence))
         {
             // Invalid debug information or padding is not zero so resync failed
             return false;
         }
+
+        SMR state_machine_regs;
 
         reset_state_machine (state_machine_regs, linfo.li_default_is_stmt);
 
@@ -404,8 +346,7 @@ static bool display_debug_lines_decoded (bfd* abfd, unsigned char *data, bfd_siz
                                 reset_state_machine (state_machine_regs, linfo.li_default_is_stmt);
                                 break;
                             case DW_LNE_set_address:
-                                state_machine_regs.address =
-                                    byte_get (op_code_data, ext_op_code_len - bytes_read - 1);
+                                state_machine_regs.address = read_address(abfd, signed_vma, op_code_data, ext_op_code_len - bytes_read - 1);
                                 state_machine_regs.op_index = 0;
                                 break;
                             case DW_LNE_define_file:
@@ -501,7 +442,7 @@ static bool display_debug_lines_decoded (bfd* abfd, unsigned char *data, bfd_siz
                     break;
 
                 case DW_LNS_fixed_advance_pc:
-                    uladv = byte_get (data, 2);
+                    uladv = bfd_get_16 (abfd, data);
                     data += 2;
                     state_machine_regs.address += uladv;
                     state_machine_regs.op_index = 0;
