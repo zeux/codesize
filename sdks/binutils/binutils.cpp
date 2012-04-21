@@ -73,17 +73,101 @@ char* concatStrings(const char* lhs, const char* rhs)
     return result;
 }
 
+bool isDigit(char ch)
+{
+    return ch >= '0' && ch <= '9';
+}
+
+const char* findRodataSuffix(const char* name)
+{
+    size_t length = strlen(name);
+
+    // $rodata suffix
+    if (length > 7 && strcmp(name + length - 7, "$rodata") == 0)
+        return name + length - 7;
+
+    // .\d+ suffix
+    size_t dotpos = length;
+
+    for (; dotpos > 0; --dotpos)
+    {
+        char ch = name[dotpos - 1];
+
+        if (ch == '.')
+            return name + dotpos - 1;
+        else if (!isDigit(ch))
+            break;
+    }
+
+    return 0;
+}
+
+// prefix characters that have special meaning:
+// * - \d*
+// + - \d+
+const char* stripPrefixWild(const char* name, const char* prefix)
+{
+    const char* s = name;
+
+    for (; *prefix; prefix++)
+    {
+        if (*prefix == '*')
+        {
+            while (isDigit(*s)) s++;
+        }
+        else if (*prefix == '+')
+        {
+            if (!isDigit(*s)) return name;
+            do s++;
+            while (isDigit(*s));
+        }
+        else
+        {
+            if (*s++ != *prefix) return name;
+        }
+    }
+
+    return s;
+}
+
+const char* getStripPrefix(const char* name)
+{
+    if (name[0] == '.' && name[1] == 'L')
+    {
+        switch (name[2])
+        {
+        case 'N': return ".LNst*.";
+        case 'f': return ".Lfi*.";
+        case 'v': return ".Lvi*.";
+        case 'l': return ".Llli*.";
+        }
+    }
+
+    return 0;
+}
+
 char* getDemangledName(bfd* abfd, const char* name)
 {
     // strip ./$ prefix
     if (name[0] == '.' || name[0] == '$') name++;
 
-    size_t length = strlen(name);
+    // strip various known symbol prefixes
+    if (const char* strip = getStripPrefix(name))
+    {
+        name = stripPrefixWild(name, strip);
+    }
+
+    // strip /... prefix
+    if (name[0] == '/')
+    {
+        const char* dot = strchr(name, '.');
+        if (dot) name = dot + 1;
+    }
 
     // strip $rodata suffix before demangling
-    if (length > 7 && strcmp(name + length - 7, "$rodata") == 0)
+    if (const char* rodata = findRodataSuffix(name))
     {
-        std::string temp(name, length - 7);
+        std::string temp(name, rodata);
 
         char* rawname = getDemangledNameRaw(abfd, temp.c_str());
         char* result = rawname ? concatStrings(rawname, " rodata") : 0;
