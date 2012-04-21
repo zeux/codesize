@@ -405,7 +405,7 @@ int iovecStat(struct bfd *abfd, void *stream, struct stat *sb)
     return 0;
 }
 
-BuFile* buOpen(const char* path, int offset)
+BuFile* buFileOpen(const char* path, int offset)
 {
     iovecStreamParams p = {path, offset};
 
@@ -423,7 +423,7 @@ BuFile* buOpen(const char* path, int offset)
     return new BuFile(std::move(abfd), std::move(symtab));
 }
 
-void buClose(BuFile* file)
+void buFileClose(BuFile* file)
 {
     delete file;
 }

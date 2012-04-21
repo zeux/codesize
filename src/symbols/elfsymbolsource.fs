@@ -26,8 +26,8 @@ module private binutils =
         val file: int
         val line: int
 
-    [<DllImport("binutils")>] extern BuFile buOpen(string path, int offset)
-    [<DllImport("binutils")>] extern void buClose(BuFile file)
+    [<DllImport("binutils")>] extern BuFile buFileOpen(string path, int offset)
+    [<DllImport("binutils")>] extern void buFileClose(BuFile file)
 
     [<DllImport("binutils")>] extern BuSymtab buSymtabOpen(BuFile file)
     [<DllImport("binutils")>] extern void buSymtabClose(BuSymtab symtab)
@@ -102,23 +102,21 @@ module private binutils =
             addr, min size (symaddr + symsize - addr), file, line)
 
 type ElfSymbolSource(path, ?offset) =
-    let file = binutils.buOpen(path, defaultArg offset 0)
+    let file = binutils.buFileOpen(path, defaultArg offset 0)
     do if file = 0n then failwithf "Error opening file %s" path
 
     let symbols =
         lazy
-        let data =
             use symtab = new binutils.Scoped(binutils.buSymtabOpen(file), binutils.buSymtabClose)
             if symtab.Value = 0n then failwithf "Error reading symbols from file %s" path
 
             binutils.getArray binutils.buSymtabGetData symtab.Value
-            |> Array.map (fun s -> s.address, s.size, (char s.typ), Marshal.PtrToStringAnsi(s.name))
-
-        data
-        |> Array.filter (fun (_, _, typ, name) -> binutils.sectionList.IndexOf(typ) <> -1 && name.StartsWith("LANCHOR") = false)
-        |> binutils.fixSizes
-        |> Array.map (fun (address, size, typ, name) ->
-            { address = address; size = size; section = binutils.getSectionName typ; name = name })
+            |> Array.filter (fun s -> binutils.sectionList.IndexOf(char s.typ) <> -1)
+            |> Array.map (fun s ->
+                { address = s.address
+                  size = s.size
+                  section = binutils.getSectionName (char s.typ)
+                  name = Marshal.PtrToStringAnsi(s.name) })
 
     let filelines =
         lazy
@@ -142,7 +140,7 @@ type ElfSymbolSource(path, ?offset) =
     let fileLineLock = obj()
 
     override this.Finalize() =
-        binutils.buClose file
+        binutils.buFileClose file
 
     interface ISymbolSource with
         member this.Sections = binutils.sectionList |> Seq.map binutils.getSectionName |> set |> Set.toArray
