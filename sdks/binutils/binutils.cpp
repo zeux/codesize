@@ -10,6 +10,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <algorithm>
 
 #include <objbase.h>
 
@@ -39,14 +40,6 @@ std::vector<asymbol*> slurpSymtab(bfd* abfd)
     }
 
     return std::move(res);
-}
-
-bool keepSymbol(bfd* abfd, asymbol* sym)
-{
-    if (sym->flags & BSF_DEBUGGING) return false;
-	if (bfd_is_target_special_symbol(abfd, sym)) return false;
-
-    return true;
 }
 
 struct BuSymbolOwn: BuSymbol
@@ -103,18 +96,75 @@ char* getDemangledName(bfd* abfd, const char* name)
         return getDemangledNameRaw(abfd, name);
 }
 
-std::vector<BuSymbolOwn> getSymbols(bfd* abfd, asymbol** symtab, size_t symcount)
+bool keepSymbol(bfd* abfd, asymbol* sym)
 {
-    std::vector<BuSymbolOwn> result;
+    if (sym->flags & BSF_DEBUGGING) return false;
+	if (bfd_is_target_special_symbol(abfd, sym)) return false;
+    if (strncmp(bfd_asymbol_name(sym), ".LANCHOR", 8) == 0) return false;
 
-    bool elf = bfd_get_flavour(abfd) == bfd_target_elf_flavour;
+    return true;
+}
+
+bfd_vma getSymbolSize(bfd* abfd, asymbol* sym)
+{
+    return (bfd_get_flavour(abfd) == bfd_target_elf_flavour) ? reinterpret_cast<elf_symbol_type*>(sym)->internal_elf_sym.st_size : 0;
+}
+
+bfd_vma getSymbolPaddedSize(bfd* abfd, asymbol* sym, asymbol* next)
+{
+    bfd_section* sec = bfd_get_section(sym);
+
+    // If next symbol is from the same section, size is considered to be the address difference
+    // Otherwise, symbol is assumed to occupy the rest of the section
+    // Exception to the rule is when symbol VMA is not in the section (this can happen for TLS symbols)
+    // Then just fall back to the ELF-specified size
+    return
+        (next && sec == bfd_get_section(next) && next->value < sec->size) ?
+            bfd_asymbol_value(next) - bfd_asymbol_value(sym) :
+            sym->value < sec->size ?
+                sec->size - sym->value :
+                getSymbolSize(abfd, sym);
+}
+
+std::vector<asymbol*> getSymbolsSortedFiltered(bfd* abfd, asymbol** symtab, size_t symcount)
+{
+    std::vector<asymbol*> result;
+    result.reserve(symcount);
 
     for (size_t i = 0; i < symcount; ++i)
     {
         asymbol* sym = symtab[i];
         assert(sym);
 
-        if (!keepSymbol(abfd, sym)) continue;
+        if (keepSymbol(abfd, sym))
+            result.push_back(sym);
+    }
+
+    // sort by section, then by offset within section, then by size (reverse) - that way larger symbol survives after unique()
+    std::sort(result.begin(), result.end(), [=](asymbol* lhs, asymbol* rhs) {
+        return lhs->section != rhs->section ?
+            lhs->section < rhs->section :
+                lhs->value != rhs->value ?
+                    lhs->value < rhs->value :
+                    getSymbolSize(abfd, lhs) > getSymbolSize(abfd, rhs); });
+
+    // remove duplicate symbols
+    result.erase(
+        std::unique(result.begin(), result.end(), [](asymbol* lhs, asymbol* rhs) { return lhs->section == rhs->section && lhs->value == rhs->value; }),
+        result.end());
+
+    return std::move(result);
+}
+
+std::vector<BuSymbolOwn> getSymbols(bfd* abfd, asymbol** symtab, size_t symcount)
+{
+    std::vector<asymbol*> symbols = getSymbolsSortedFiltered(abfd, symtab, symcount);
+
+    std::vector<BuSymbolOwn> result(symbols.size());
+
+    for (size_t i = 0; i < symbols.size(); ++i)
+    {
+        asymbol* sym = symbols[i];
 
         symbol_info info;
         bfd_get_symbol_info(abfd, sym, &info);
@@ -123,14 +173,14 @@ std::vector<BuSymbolOwn> getSymbols(bfd* abfd, asymbol** symtab, size_t symcount
 
         BuSymbolOwn s;
         s.address = info.value;
-        s.size = elf ? reinterpret_cast<elf_symbol_type*>(sym)->internal_elf_sym.st_size : 0;
+        s.size = getSymbolPaddedSize(abfd, sym, (i + 1 < symbols.size()) ? symbols[i + 1] : nullptr);
 
         s.type = info.type;
         s.name = name;
 
         s.namestorage.reset(name);
 
-        result.push_back(std::move(s));
+        result[i] = std::move(s);
     }
 
     return std::move(result);
