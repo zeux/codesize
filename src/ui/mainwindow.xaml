@@ -99,7 +99,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="20" />
-                <RowDefinition Height="80" />
+                <RowDefinition Height="100" />
             </Grid.RowDefinitions>
             <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" SelectionMode="Single">
                 <ListView.ItemTemplate>
@@ -117,6 +117,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
@@ -128,10 +129,12 @@
                     </TextBlock>
                     <TextBlock Text="Size:" Grid.Row="2" Grid.Column="0" />
                     <TextBlock Text="Address:" Grid.Row="3" Grid.Column="0" />
+                    <TextBlock Text="Section:" Grid.Row="4" Grid.Column="0" />
                     <TextBox Name="SymbolName" Grid.Row="0" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap" MaxLines="4"/>
                     <TextBox Name="SymbolLocation" Grid.Row="1" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
                     <TextBox Name="SymbolSize" Grid.Row="2" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
                     <TextBox Name="SymbolAddress" Grid.Row="3" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
+                    <TextBox Name="SymbolSection" Grid.Row="4" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" />
                 </Grid>
             </GroupBox>
         </Grid>

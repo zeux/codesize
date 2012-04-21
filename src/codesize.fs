@@ -59,6 +59,7 @@ module controls =
     let symbolLocationLink = window?SymbolLocationLink :?> Hyperlink
     let symbolSize = window?SymbolSize :?> TextBox
     let symbolAddress = window?SymbolAddress :?> TextBox
+    let symbolSection = window?SymbolSection :?> TextBox
     let contentsTree = window?ContentsTree :?> TreeView
     let contentsList = window?ContentsList :?> ListView
 
@@ -408,8 +409,9 @@ let updateSelectedSymbol (ess: ISymbolSource) (item: obj) =
         controls.symbolName.Text <- sym.name
         controls.symbolLocation.Text <- "resolving..."
         controls.symbolLocationLink.Tag <- null
-        controls.symbolAddress.Text <- "0x" + sym.address.ToString("x")
         controls.symbolSize.Text <- sym.size.ToString("#,0")
+        controls.symbolAddress.Text <- "0x" + sym.address.ToString("x")
+        controls.symbolSection.Text <- sym.section
 
         async {
             do! AsyncUI.switchToWork ()
@@ -432,6 +434,7 @@ let updateSelectedSymbol (ess: ISymbolSource) (item: obj) =
         controls.symbolLocationLink.Tag <- null
         controls.symbolSize.Text <- ""
         controls.symbolAddress.Text <- ""
+        controls.symbolSection.Text <- ""
 
 let jumpToAgent = AsyncUI.SingleUpdateAgent()
 
