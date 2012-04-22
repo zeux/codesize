@@ -122,8 +122,15 @@
                     </HierarchicalDataTemplate>
                 </TreeView.ItemTemplate>
             </TreeView>
-            <GridSplitter Grid.Row="1" ResizeDirection="Rows" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="Auto" Background="WhiteSmoke" />
-            <GroupBox Grid.Row="1" Grid.RowSpan="2" Name="SymbolPanel" Header="Symbol" Background="WhiteSmoke" Padding="4">
+            <GridSplitter Grid.Row="1" ResizeDirection="Rows" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="Auto">
+                <GridSplitter.Background>
+                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                        <GradientStop Color="LightGray" Offset="0"/>
+                        <GradientStop Color="White" Offset="1"/>
+                    </LinearGradientBrush>
+                </GridSplitter.Background>
+            </GridSplitter>
+            <GroupBox Grid.Row="1" Grid.RowSpan="2" Name="SymbolPanel" Header="Symbol" Background="WhiteSmoke" Padding="4" Margin="0,4,0,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
