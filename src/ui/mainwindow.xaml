@@ -159,8 +159,8 @@
             </GroupBox>
         </Grid>
         <Grid Row="1">
-            <Grid Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Background="Gainsboro">
-                <Border BorderThickness="1" BorderBrush="Black" />
+            <Grid Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Background="Gainsboro" UseLayoutRounding="True">
+                <Border BorderThickness="1" BorderBrush="DarkGray" />
                 <StackPanel Orientation="Vertical">
                     <TextBlock Name="LabelLoading" Text="Loading..." HorizontalAlignment="Center" Margin="4" />
                     <ProgressBar HorizontalAlignment="Center" Height="20" Width="200" IsIndeterminate="True" Margin="4" />

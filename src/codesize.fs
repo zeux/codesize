@@ -495,12 +495,15 @@ window.Loaded.Add(fun _ ->
             else
                 exit 0
 
+    window.IsEnabled <- false
     window.Title <- sprintf "%s - %s" window.Title path
+    controls.panelLoading.Visibility <- Visibility.Visible
     controls.labelLoading.Text <- sprintf "Loading %s..." path
 
     protectUI $ async {
         let ess = getSymbolSource path
         do! bindToViewAsync ess
+        window.IsEnabled <- true
         controls.panelLoading.Visibility <- Visibility.Hidden
     } |> Async.Start)
 
