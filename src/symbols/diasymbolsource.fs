@@ -1,8 +1,17 @@
 namespace Symbols
 
+open System
+
 open Dia2Lib
 
-module PDBDump =
+module DIA =
+    type LocationType =
+    | LocIsStatic = 1
+
+    [<Flags>]
+    type UNDNAME =
+    | NAME_ONLY = 0x1000
+
     // helper to convert IDiaEnumSymbols to IDiaSymbol[]
     let syms (s: IDiaEnumSymbols) = seq { for o in s -> o :?> IDiaSymbol }
 
@@ -36,26 +45,30 @@ module PDBDump =
         
         // get symbol info
         all_symbols
-        |> Seq.filter (fun s -> s.locationType = 1u && s.length > 0UL) // LocIsStatic
+        |> Seq.filter (fun s -> s.locationType = uint32 LocationType.LocIsStatic && s.length > 0UL)
         |> Seq.distinctBy (fun s -> s.relativeVirtualAddress)
-        |> Seq.map (fun s ->
-            let undname = s.get_undecoratedNameEx(0x1000u) // UNDNAME_NAME_ONLY
-            let section = int s.addressSection
-            let section_name = if section <= sections.Length then sections.[section - 1] else "" 
-            s.length, s.addressOffset, section_name, if undname <> null then undname else s.name)
         |> Seq.toArray
+        |> Array.map (fun s ->
+            let undname = s.get_undecoratedNameEx(uint32 UNDNAME.NAME_ONLY)
+            let section = int s.addressSection
+            let section_name = if section > 0 && section <= sections.Length then sections.[section - 1] else "" 
+
+            { address = uint64 s.relativeVirtualAddress
+              size = uint64 s.length
+              section = section_name
+              name = if undname <> null then undname else s.name })
 
 type DiaSymbolSource(source: IDiaDataSource) =
     let session = source.openSession()
 
-    let symbols =
-        lazy
-        PDBDump.getSymbols session
-        |> Array.map (fun (size, address, section, name) ->
-            { address = uint64 address; size = uint64 size; section = section; name = name })
+    let symbols = lazy DIA.getSymbols session
 
     interface ISymbolSource with
-        member this.Sections = PDBDump.getSectionNames session
+        member this.Sections = DIA.getSectionNames session
         member this.Symbols = symbols.Value
         member this.FileLines = [||]
-        member this.GetFileLine address = None
+        member this.GetFileLine address =
+            let lines = session.findLinesByRVA(uint32 address, 0u)
+            match lines.Next(1u) with
+            | line, 1u -> Some (line.sourceFile.fileName, int line.lineNumber)
+            | _ -> None
