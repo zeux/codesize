@@ -11,15 +11,12 @@ type BaseConverter() =
 
     override this.ProvideValue(sp) = box this
 
-    interface IValueConverter with
-        member this.Convert(value, targetType, parameter, culture) = failwith "Not implemented"
-        member this.ConvertBack(value, targetType, parameter, culture) = failwith "Not implemented"
-
 type FnConverter<'T, 'U>(fn: 'T -> 'U) =
     inherit BaseConverter()
 
     interface IValueConverter with
         member this.Convert(value, targetType, parameter, culture) = box (fn (value :?> 'T))
+        member this.ConvertBack(value, targetType, parameter, culture) = failwith "Not implemented"
 
 type IsNotNull() =
     inherit FnConverter<obj, bool>(fun v -> v <> null)
@@ -50,6 +47,8 @@ type TreeNodeHeader() =
         | o -> string o)
 
 type TreeNodeItems() =
+    inherit BaseConverter()
+
     let dummy = [|null|]
     let empty = [||]
 
