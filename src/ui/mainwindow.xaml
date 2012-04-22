@@ -109,7 +109,19 @@
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>
-            <TreeView Name="ContentsTree" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" />
+            <TreeView Name="ContentsTree" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden">
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate>
+                        <HierarchicalDataTemplate.ItemsSource>
+                            <MultiBinding Converter="{conv:TreeNodeItems}">
+                                <Binding RelativeSource="{RelativeSource Self}" Path="IsExpanded" />
+                                <Binding />
+                            </MultiBinding>
+                        </HierarchicalDataTemplate.ItemsSource>
+                        <TextBlock Text="{Binding Converter={conv:TreeNodeHeader}}" />
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
             <GridSplitter Grid.Row="1" ResizeDirection="Rows" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="Auto" Background="WhiteSmoke" />
             <GroupBox Grid.Row="1" Grid.RowSpan="2" Name="SymbolPanel" Header="Symbol" Background="WhiteSmoke" Padding="4">
                 <Grid>

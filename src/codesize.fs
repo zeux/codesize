@@ -60,8 +60,6 @@ module controls =
     let contentsTree = window?ContentsTree :?> TreeView
     let contentsList = window?ContentsList :?> ListView
 
-let treeViewBinding = TreeView.Binding(controls.contentsTree)
-
 let getFilterTextFn typ (text: string) =
     let contains (s: string) (p: string) = s.IndexOf(p, StringComparison.InvariantCultureIgnoreCase) >= 0
 
@@ -221,22 +219,6 @@ let getLineRanges (ess: ISymbolSource) mergeDistance =
     |> Seq.toArray
     |> Array.collect (fun (file, lines) -> getLineRangesForFile file lines mergeDistance)
 
-let getSymbolText sym =
-    sym.name + (if sym.section = "" then "" else " [" + sym.section + "]")
-
-let getFileText file =
-    if file.lineBegin = file.lineEnd then
-        sprintf "%s:%d" file.file file.lineBegin
-    else
-        sprintf "%s:%d-%d" file.file file.lineBegin file.lineEnd
-
-type ListItem() =
-    inherit Converters.FnConverter<obj, string>(fun item ->
-        match item with
-        | :? Symbol as sym -> sym.size.ToString("#,0 ") + getSymbolText sym
-        | :? FileLineRange as file -> file.size.ToString("#,0 ") + getFileText file
-        | o -> failwithf "Unsupported type %O" $ o.GetType())
-
 let getStatsSymbol syms =
     // group symbols by section and find total size for each section
     let sections =
@@ -285,9 +267,10 @@ let rebindToViewSymbolsAsync (ess: ISymbolSource) view =
         match view with
         | controls.DisplayView.Tree ->
             let items = syms |> Array.map (fun sym -> token.ThrowIfCancellationRequested(); int sym.size, group sym.name, sym)
+            let nodes = TreeView.getNodes items prefix
 
             do! AsyncUI.switchToUI ()
-            treeViewBinding.Update(items, getSymbolText, prefix)
+            controls.contentsTree.ItemsSource <- nodes
         | controls.DisplayView.List ->
             let items = syms |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
 
@@ -319,9 +302,10 @@ let rebindToViewFilesAsync (ess: ISymbolSource) view =
         match view with
         | controls.DisplayView.Tree ->
             let items = files |> Array.map (fun file -> token.ThrowIfCancellationRequested(); int file.size, file.file, file)
+            let nodes = TreeView.getNodes items prefix
 
             do! AsyncUI.switchToUI ()
-            treeViewBinding.Update(items, getFileText, prefix)
+            controls.contentsTree.ItemsSource <- nodes
         | controls.DisplayView.List ->
             let items = files |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
 
@@ -462,15 +446,13 @@ let updateSymbolUI (ess: ISymbolSource) =
         | _ -> ())
 
     controls.contentsTree.MouseDoubleClick.Add(fun _ ->
-        let item = controls.contentsTree.SelectedItem :?> TreeViewItem
-        jumpToItem ess (if item = null then null else item.Tag))
+        jumpToItem ess controls.contentsTree.SelectedItem)
 
     controls.contentsList.MouseDoubleClick.Add(fun _ ->
         jumpToItem ess controls.contentsList.SelectedItem)
 
     controls.contentsTree.SelectedItemChanged.Add(fun _ ->
-        let item = controls.contentsTree.SelectedItem :?> TreeViewItem
-        updateSelectedSymbol ess (if item = null then null else item.Tag))
+        updateSelectedSymbol ess controls.contentsTree.SelectedItem)
 
     controls.contentsList.SelectionChanged.Add(fun _ ->
         updateSelectedSymbol ess controls.contentsList.SelectedItem)

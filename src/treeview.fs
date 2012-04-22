@@ -43,15 +43,12 @@ let private groupByPrefix data offset getPrefixLength =
         // get prefix and all items
         text.Substring(0, plength), group)
 
-// convert the dump output to a tree of nodes
-let private buildTreeItem text (size: int) tag =
-    TreeViewItem(
-        Header = text + size.ToString(" (#,0)"),
-        Tag = box tag,
-        HorizontalContentAlignment = HorizontalAlignment.Left,
-        VerticalContentAlignment = VerticalAlignment.Center)
+type Group(prefix, size, items: obj array Lazy) =
+    member this.Prefix = prefix
+    member this.Size = size
+    member this.Items = items.Value
 
-let rec private buildTree items (prefix: string) getText getPrefixLength =
+let rec private buildTree items (prefix: string) getPrefixLength =
     // group by prefix
     let groups = groupByPrefix items prefix.Length getPrefixLength
 
@@ -62,7 +59,7 @@ let rec private buildTree items (prefix: string) getText getPrefixLength =
             // standalone group?
             if subitems.Length = 1 then
                 let (size, _, item) = subitems.[0]
-                size, buildTreeItem (getText item) size item
+                size, box item
             else
                 let (_, text, _) = subitems.[0]
 
@@ -71,32 +68,19 @@ let rec private buildTree items (prefix: string) getText getPrefixLength =
                     if Array.forall (fun (_, text, _) -> name = text) subitems then
                         subitems
                         |> Array.sortBy (fun (size, _, _) -> -size)
-                        |> Array.map (fun (size, _, item) -> buildTreeItem (getText item) size item)
+                        |> Array.map (fun (size, _, item) -> box item)
                     else
-                        buildTree subitems name getText getPrefixLength
+                        buildTree subitems name getPrefixLength
 
                 let size = Array.sumBy (fun (size, _, _) -> size) subitems
-                let item = buildTreeItem name size subnodes
-                item.ItemsSource <- [|null|]
+                let item = Group(name, size, subnodes)
 
-                size, item)
+                size, box item)
 
     // return sorted nodes
     nodes
     |> Array.sortBy (fun (size, node) -> -size)
     |> Array.map (fun (size, node) -> node)
 
-type Binding(view: TreeView) =
-    do view.AddHandler(TreeViewItem.ExpandedEvent,
-        RoutedEventHandler(fun _ e ->
-            let item = e.OriginalSource :?> TreeViewItem
-
-            match item.Tag with
-            | :? Lazy<TreeViewItem[]> as t ->
-                item.ItemsSource <- t.Value
-                item.Tag <- null
-            | _ -> ()))
-
-    member this.Update(data, getText, getPrefixLength) =
-        let nodes = buildTree data "" getText getPrefixLength
-        view.ItemsSource <- nodes
+let getNodes data getPrefixLength =
+    buildTree data "" getPrefixLength

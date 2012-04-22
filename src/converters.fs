@@ -41,6 +41,28 @@ type ListItem() =
         | :? FileLineRange as file -> file.size.ToString("#,0 ") + Impl.getFileText file
         | o -> failwithf "Unsupported type %O" $ o.GetType())
 
+type TreeNodeHeader() =
+    inherit FnConverter<obj, string>(fun item ->
+        match item with
+        | :? Symbol as sym -> Impl.getSymbolText sym + sym.size.ToString(" (#,0)")
+        | :? FileLineRange as file -> Impl.getFileText file + file.size.ToString(" (#,0)")
+        | :? TreeView.Group as group -> group.Prefix + group.Size.ToString(" (#,0)")
+        | o -> string o)
+
+type TreeNodeItems() =
+    let dummy = [|null|]
+    let empty = [||]
+
+    interface IMultiValueConverter with
+        member this.Convert(values, targetType, parameter, culture) =
+            match values with
+            | [|:? bool as expanded; :? TreeView.Group as group|] ->
+                if expanded then group.Items else dummy
+            | _ -> empty
+            |> box
+
+        member this.ConvertBack(values, targetType, parameter, culture) = failwith "Not implemented"
+
 type BoolToVisibility() =
     inherit FnConverter<bool, Visibility>(fun item ->
         if item then Visibility.Visible else Visibility.Hidden)
