@@ -362,7 +362,7 @@ let updateDisplayUI ess =
     controls.displayData.SelectionChanged.Add(fun _ -> rebindToView ess)
     controls.displayView.SelectionChanged.Add(fun _ -> rebindToView ess)
 
-let updateFilterUI ess =
+let updateFilterUI ess sections =
     controls.filterText.TextChanged.Add(fun _ -> rebindToView ess)
     controls.filterTextType.SelectionChanged.Add(fun _ -> rebindToView ess)
     controls.filterSize.TextChanged.Add(fun _ -> rebindToView ess)
@@ -371,7 +371,7 @@ let updateFilterUI ess =
         if controls.filterSections.SelectedIndex >= 0 then
             controls.filterSections.SelectedIndex <- -1)
 
-    for section in ess.Sections do
+    for section in sections do
         let sectionName = if section = "" then "<other>" else section
         let item = CheckBox(Content = section, IsChecked = Nullable<bool>(true), Tag = section)
         item.Unchecked.Add(fun _ -> rebindToView ess)
@@ -459,10 +459,12 @@ let updateSymbolUI (ess: ISymbolSource) =
 
 let bindToViewAsync (ess: ISymbolSource) =
     async {
+        let sections = ess.Sections
+
         do! AsyncUI.switchToUI ()
 
         updateDisplayUI ess
-        updateFilterUI ess
+        updateFilterUI ess sections
         updateSymbolUI ess
 
         do! rebindToViewAsync ess
@@ -474,6 +476,10 @@ let getSymbolSource path =
         ElfSymbolSource(path) :> ISymbolSource
     | ".self" ->
         SelfSymbolSource(path) :> ISymbolSource
+    | ".pdb" ->
+        PdbSymbolSource(path) :> ISymbolSource
+    | ".exe" | ".dll" ->
+        ExeSymbolSource(path) :> ISymbolSource
     | e ->
         failwithf "Unknown extension %s" e
 
@@ -482,7 +488,7 @@ window.Loaded.Add(fun _ ->
         if Environment.GetCommandLineArgs().Length > 1 then
             Environment.GetCommandLineArgs().[1]
         else
-            let dlg = OpenFileDialog(Filter = "Executable files|*.elf;*.self")
+            let dlg = OpenFileDialog(Filter = "Executable files|*.elf;*.self;*.pdb;*.exe;*.dll")
             let res = dlg.ShowDialog(window)
             if res.HasValue && res.Value then
                 dlg.FileName
