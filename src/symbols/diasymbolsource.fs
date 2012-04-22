@@ -1,10 +1,11 @@
 namespace Symbols
 
 open System
+open System.Collections
 
 open Dia2Lib
 
-module DIA =
+module private DIA =
     type LocationType =
     | LocIsStatic = 1
 
@@ -12,8 +13,17 @@ module DIA =
     type UNDNAME =
     | NAME_ONLY = 0x1000
 
-    // helper to convert IDiaEnumSymbols to IDiaSymbol[]
-    let syms (s: IDiaEnumSymbols) = seq { for o in s -> o :?> IDiaSymbol }
+    // helpers to iterate IDiaEnum* objects
+    let inline toSeq (o: ^T) =
+        let e = { new IEnumerable with member this.GetEnumerator () = (^T: (member GetEnumerator: unit -> _) (o)) }
+        if true then
+            Seq.cast e
+        else
+            // Dummy expression to constrain return type to that of o.Item
+            seq [| (^T: (member Item: _ -> _) (o, Unchecked.defaultof<_>)) |]
+
+    let inline toArray o =
+        Seq.toArray $ toSeq o
 
     // get section names from session
     let getSectionNames (session: IDiaSession) =
@@ -40,11 +50,9 @@ module DIA =
         // get section names
         let sections = getSectionNames session
 
-        // get all symbols from PDB
-        let all_symbols = session.findChildren(session.globalScope, SymTagEnum.SymTagNull, null, 0u) |> syms
-        
         // get symbol info
-        all_symbols
+        session.findChildren(session.globalScope, SymTagEnum.SymTagNull, null, 0u)
+        |> toSeq
         |> Seq.filter (fun s -> s.locationType = uint32 LocationType.LocIsStatic && s.length > 0UL)
         |> Seq.distinctBy (fun s -> s.relativeVirtualAddress)
         |> Seq.toArray
@@ -60,25 +68,24 @@ module DIA =
 
     // get line information from file
     let getLines (session: IDiaSession) =
-        let files = seq { for f in session.findFile(null, null, 0u) -> f :?> IDiaSourceFile } |> Seq.toArray
-
-        files
-        |> Array.collect (fun file ->
+        session.findFile(null, null, 0u)
+        |> toSeq
+        |> Seq.collect (fun file ->
             let path = file.fileName
-            let compilands = seq { for c in file.compilands -> c :?> IDiaSymbol } |> Seq.toArray
 
-            compilands
-            |> Array.collect (fun comp ->
-                let lines = seq { for l in session.findLines(comp, file) -> l :?> IDiaLineNumber } |> Seq.toArray
-
-                lines
-                |> Array.map (fun line ->
+            file.compilands
+            |> toSeq
+            |> Seq.collect (fun comp ->
+                session.findLines(comp, file)
+                |> toSeq
+                |> Seq.map (fun line ->
                     assert (line.lineNumber = line.lineNumberEnd)
 
                     { address = uint64 line.relativeVirtualAddress
                       size = uint64 line.length
                       file = path
-                      line = int line.lineNumber } ))) 
+                      line = int line.lineNumber } )))
+        |> Seq.toArray
 
 type DiaSymbolSource(source: IDiaDataSource) =
     let session = source.openSession()
