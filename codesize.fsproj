@@ -69,6 +69,14 @@
       <SubType>Designer</SubType>
     </Resource>
     <None Include="App.config" />
+    <None Include="App.manifest">
+      <Link>codesize.exe.manifest</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="sdks\diasdk\Dia2Lib.manifest">
+      <Link>Dia2Lib.manifest</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Dia2Lib">
