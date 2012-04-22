@@ -111,7 +111,7 @@
             </ListView>
             <TreeView Name="ContentsTree" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" />
             <GridSplitter Grid.Row="1" ResizeDirection="Rows" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="Auto" Background="WhiteSmoke" />
-            <GroupBox Grid.Row="1" Grid.RowSpan="2" Header="Symbol" Background="WhiteSmoke" Padding="4">
+            <GroupBox Grid.Row="1" Grid.RowSpan="2" Name="SymbolPanel" Header="Symbol" Background="WhiteSmoke" Padding="4">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -131,11 +131,11 @@
                     <TextBlock Text="Size:" Grid.Row="2" Grid.Column="0" />
                     <TextBlock Text="Address:" Grid.Row="3" Grid.Column="0" />
                     <TextBlock Text="Section:" Grid.Row="4" Grid.Column="0" />
-                    <TextBox Name="SymbolName" Grid.Row="0" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap" MaxLines="4" bhvr:TextBox.DoubleClickSelectsAll="True" />
+                    <TextBox Name="SymbolName" Grid.Row="0" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap" MaxLines="4" Text="{Binding ElementName=SymbolPanel, Path=Tag.name, Mode=OneWay}" bhvr:TextBox.DoubleClickSelectsAll="True" />
                     <TextBox Name="SymbolLocation" Grid.Row="1" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" bhvr:TextBox.DoubleClickSelectsAll="True" />
-                    <TextBox Name="SymbolSize" Grid.Row="2" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" bhvr:TextBox.DoubleClickSelectsAll="True" />
-                    <TextBox Name="SymbolAddress" Grid.Row="3" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" bhvr:TextBox.DoubleClickSelectsAll="True" />
-                    <TextBox Name="SymbolSection" Grid.Row="4" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" bhvr:TextBox.DoubleClickSelectsAll="True" />
+                    <TextBox Name="SymbolSize" Grid.Row="2" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" Text="{Binding ElementName=SymbolPanel, Path=Tag.size, Mode=OneWay, StringFormat='#,0'}" bhvr:TextBox.DoubleClickSelectsAll="True" />
+                    <TextBox Name="SymbolAddress" Grid.Row="3" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" Text="{Binding ElementName=SymbolPanel, Path=Tag.address, Mode=OneWay, StringFormat=0x{0:x}}" bhvr:TextBox.DoubleClickSelectsAll="True" />
+                    <TextBox Name="SymbolSection" Grid.Row="4" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" Text="{Binding ElementName=SymbolPanel, Path=Tag.section, Mode=OneWay}" bhvr:TextBox.DoubleClickSelectsAll="True" />
                 </Grid>
             </GroupBox>
         </Grid>
