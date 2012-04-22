@@ -58,15 +58,38 @@ module DIA =
               section = section_name
               name = if undname <> null then undname else s.name })
 
+    // get line information from file
+    let getLines (session: IDiaSession) =
+        let files = seq { for f in session.findFile(null, null, 0u) -> f :?> IDiaSourceFile } |> Seq.toArray
+
+        files
+        |> Array.collect (fun file ->
+            let path = file.fileName
+            let compilands = seq { for c in file.compilands -> c :?> IDiaSymbol } |> Seq.toArray
+
+            compilands
+            |> Array.collect (fun comp ->
+                let lines = seq { for l in session.findLines(comp, file) -> l :?> IDiaLineNumber } |> Seq.toArray
+
+                lines
+                |> Array.map (fun line ->
+                    assert (line.lineNumber = line.lineNumberEnd)
+
+                    { address = uint64 line.relativeVirtualAddress
+                      size = uint64 line.length
+                      file = path
+                      line = int line.lineNumber } ))) 
+
 type DiaSymbolSource(source: IDiaDataSource) =
     let session = source.openSession()
 
     let symbols = lazy DIA.getSymbols session
+    let lines = lazy DIA.getLines session
 
     interface ISymbolSource with
         member this.Sections = DIA.getSectionNames session
         member this.Symbols = symbols.Value
-        member this.FileLines = [||]
+        member this.FileLines = lines.Value
         member this.GetFileLine address =
             let lines = session.findLinesByRVA(uint32 address, 0u)
             match lines.Next(1u) with
