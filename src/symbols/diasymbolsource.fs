@@ -45,24 +45,31 @@ module private DIA =
 
             System.String(bytes))
 
+    // get symbol size
+    let getSymbolSize (sym: IDiaSymbol) =
+        match enum $ int sym.symTag with
+        | SymTagEnum.SymTagFunction -> sym.length
+        | SymTagEnum.SymTagData -> sym.``type``.length
+        | t -> failwithf "Unknown symbol tag %O" t
+
     // get symbol information from file
     let getSymbols (session: IDiaSession) =
         // get section names
         let sections = getSectionNames session
 
         // get symbol info
-        session.findChildren(session.globalScope, SymTagEnum.SymTagNull, null, 0u)
-        |> toSeq
-        |> Seq.filter (fun s -> s.locationType = uint32 LocationType.LocIsStatic && s.length > 0UL)
-        |> Seq.distinctBy (fun s -> s.relativeVirtualAddress)
+        toSeq $ session.findChildren(session.globalScope, SymTagEnum.SymTagFunction, null, 0u)
+        |> Seq.append (toSeq $ session.findChildren(session.globalScope, SymTagEnum.SymTagData, null, 0u))
+        |> Seq.filter (fun s -> s.locationType = uint32 LocationType.LocIsStatic)
         |> Seq.toArray
         |> Array.map (fun s ->
+            let size = getSymbolSize s
             let undname = s.get_undecoratedNameEx(uint32 UNDNAME.NAME_ONLY)
             let section = int s.addressSection
             let section_name = if section > 0 && section <= sections.Length then sections.[section - 1] else "" 
 
             { address = uint64 s.relativeVirtualAddress
-              size = uint64 s.length
+              size = size
               section = section_name
               name = if undname <> null then undname else s.name })
 
