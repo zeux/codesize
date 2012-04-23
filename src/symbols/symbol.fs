@@ -2,8 +2,8 @@ namespace Symbols
 
 type Symbol =
     { address: uint64
-      name: string
       size: uint64
+      name: string
       section: string }
 
 type FileLine =
