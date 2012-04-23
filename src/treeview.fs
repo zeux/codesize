@@ -33,7 +33,7 @@ let private groupByPrefix data offset getPrefixLength =
             let pn = getPrefixLength text offset
             if pn > 0 && group |> Array.forall (fun (_, ti, _) ->
                 let pi = getPrefixLength ti offset
-                pi = pn && String.Compare(text, offset, ti, offset, pn) = 0) then
+                pi = pn && String.CompareOrdinal(text, offset, ti, offset, pn) = 0) then
                 findPrefix (offset + pn)
             else
                 offset
