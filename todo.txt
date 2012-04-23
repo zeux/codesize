@@ -8,3 +8,5 @@
 - add support for external editors (vs/vim/emacs/notepad++/...?)
 - fix binutils parsing of dwarf decodedline for some elf files (addr2line works but objdump fails)
 - internal editor can display size per line in an extra column?..
+- better extension support (pyd/mll) & filters
+- open another file from within the same process? :)
