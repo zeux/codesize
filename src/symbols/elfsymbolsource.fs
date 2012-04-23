@@ -135,7 +135,7 @@ type ElfSymbolSource(path, ?offset) =
         data
         |> binutils.fixSizes
         |> binutils.fixSizesSymBounds (symbols.Value |> Array.map (fun sym -> sym.address, sym.size))
-        |> Array.map (fun (addr, size, file, line) -> { address = addr; size = size; file = file; line = line })
+        |> Array.map (fun (addr, size, file, line) -> { address = addr; size = size; file = file; lineBegin = line; lineEnd = line })
 
     let fileLineLock = obj()
 

@@ -79,12 +79,11 @@ module private DIA =
                 session.findLines(comp, file)
                 |> toSeq
                 |> Seq.map (fun line ->
-                    assert (line.lineNumber = line.lineNumberEnd)
-
                     { address = uint64 line.relativeVirtualAddress
                       size = uint64 line.length
                       file = path
-                      line = int line.lineNumber } )))
+                      lineBegin = int line.lineNumber
+                      lineEnd = int line.lineNumberEnd} )))
         |> Seq.toArray
 
 type DiaSymbolSource(source: IDiaDataSource) =

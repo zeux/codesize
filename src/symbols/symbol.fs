@@ -10,7 +10,8 @@ type FileLine =
     { address: uint64
       size: uint64
       file: string
-      line: int }
+      lineBegin: int
+      lineEnd: int }
 
 type FileLineRange =
     { size: uint64

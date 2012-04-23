@@ -199,12 +199,12 @@ let getPrefixSymbolFn () =
 let getLineRangesForFile file (lines: FileLine seq) mergeDistance =
     let ranges = Stack<FileLineRange>()
 
-    for fl in lines |> Seq.sortBy (fun fl -> fl.line) do
-        if ranges.Count > 0 && (let top = ranges.Peek() in fl.line - top.lineEnd <= mergeDistance) then
+    for fl in lines |> Seq.sortBy (fun fl -> fl.lineBegin) do
+        if ranges.Count > 0 && (let top = ranges.Peek() in fl.lineBegin - top.lineEnd <= mergeDistance) then
             let top = ranges.Pop()
-            ranges.Push({ size = top.size + fl.size; file = file; lineBegin = top.lineBegin; lineEnd = fl.line })
+            ranges.Push({ size = top.size + fl.size; file = file; lineBegin = top.lineBegin; lineEnd = fl.lineEnd })
         else
-            ranges.Push({ size = fl.size; file = file; lineBegin = fl.line; lineEnd = fl.line })
+            ranges.Push({ size = fl.size; file = file; lineBegin = fl.lineBegin; lineEnd = fl.lineEnd })
 
     ranges.ToArray()
 
