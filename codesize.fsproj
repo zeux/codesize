@@ -59,6 +59,7 @@
     <Compile Include="src\editor.fs" />
     <Compile Include="src\converters.fs" />
     <Compile Include="src\behaviors.fs" />
+    <Compile Include="src\settings.fs" />
     <Compile Include="src\codesize.fs" />
     <Resource Include="src\ui\mainwindow.xaml">
       <Generator>MSBuild:Compile</Generator>

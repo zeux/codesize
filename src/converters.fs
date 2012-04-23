@@ -36,7 +36,7 @@ type ListItem() =
         match item with
         | :? Symbol as sym -> sym.size.ToString("#,0 ") + Impl.getSymbolText sym
         | :? FileLineRange as file -> file.size.ToString("#,0 ") + Impl.getFileText file
-        | o -> failwithf "Unsupported type %O" $ o.GetType())
+        | o -> string o)
 
 type TreeNodeHeader() =
     inherit FnConverter<obj, string>(fun item ->

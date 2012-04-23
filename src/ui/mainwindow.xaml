@@ -3,7 +3,7 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        xmlns:ui="clr-namespace:UI;assembly=codesize"
-       Title="codesize" Height="342" Width="768" ResizeMode="CanResizeWithGrip">
+       Name="MainWindow" Title="codesize" Height="342" Width="768" ResizeMode="CanResizeWithGrip">
     <Window.Resources>
         <Style x:Key="VisibleForSymbols" TargetType="FrameworkElement">
             <Setter Property="Visibility" Value="{Binding ElementName=DisplayDataSymbols, Path=IsSelected, Converter={ui:BoolToVisibility}}" />
@@ -30,12 +30,12 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Data:" Grid.Row="0" Grid.Column="0"/>
-                    <ComboBox Name="DisplayData" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="0" Grid.Column="1">
+                    <ComboBox Name="DisplayData" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}" Grid.Row="0" Grid.Column="1">
                         <ComboBoxItem Name="DisplayDataSymbols" Content="Symbols"/>
                         <ComboBoxItem Name="DisplayDataFiles" Content="Files"/>
                     </ComboBox>
                     <TextBlock Text="View:" Grid.Row="1" Grid.Column="0"/>
-                    <ComboBox Name="DisplayView" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="1" Grid.Column="1">
+                    <ComboBox Name="DisplayView" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}" Grid.Row="1" Grid.Column="1">
                         <ComboBoxItem Content="Tree"/>
                         <ComboBoxItem Content="List"/>
                     </ComboBox>
@@ -54,7 +54,7 @@
                     <TextBlock Text="Name:" Grid.Row="0" Grid.Column="0"/>
                     <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1">
                         <TextBox Name="FilterText" Height="21" Margin="4,0,0,4" TextWrapping="Wrap" VerticalAlignment="Top" HorizontalAlignment="Left" Width="208" />
-                        <ComboBox Name="FilterTextType" HorizontalAlignment="Right" Height="21" Margin="4,0,0,0" VerticalAlignment="Top" SelectedIndex="0">
+                        <ComboBox Name="FilterTextType" HorizontalAlignment="Right" Height="21" Margin="4,0,0,0" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}">
                             <ComboBoxItem Content="Words"/>
                             <ComboBoxItem Content="Phrase"/>
                             <ComboBoxItem Content="Regex"/>
@@ -80,18 +80,18 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Prefix:" Grid.Row="0" Grid.Column="0"/>
-                    <ComboBox Name="GroupPrefix" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="0" Grid.Column="1">
+                    <ComboBox Name="GroupPrefix" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}" Grid.Row="0" Grid.Column="1">
                         <ComboBoxItem Content="Letter"/>
                         <ComboBoxItem Content="Word"/>
                     </ComboBox>
                     <TextBlock Text="Templates:" Grid.Row="1" Grid.Column="0" Style="{StaticResource VisibleForSymbols}" />
-                    <ComboBox Name="GroupTemplates" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="0" Grid.Row="1" Grid.Column="1" Style="{StaticResource VisibleForSymbols}">
+                    <ComboBox Name="GroupTemplates" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}" Grid.Row="1" Grid.Column="1" Style="{StaticResource VisibleForSymbols}">
                         <ComboBoxItem Content="None"/>
                         <ComboBoxItem Content="Merge all types"/>
                         <ComboBoxItem Content="Merge incompatible types"/>
                     </ComboBox>
                     <TextBlock Text="Line merge:" Grid.Row="1" Grid.Column="0" Style="{StaticResource VisibleForFiles}" />
-                    <TextBox Name="GroupLineMerge" Height="21" Margin="4,0,4,4" Grid.Row="1" Grid.Column="1" Text="1" Style="{StaticResource VisibleForFiles}" />
+                    <TextBox Name="GroupLineMerge" Height="21" Margin="4,0,4,4" Grid.Row="1" Grid.Column="1" Text="{ui:AutoSave 1}" Style="{StaticResource VisibleForFiles}" />
                 </Grid>
             </GroupBox>
         </StackPanel>
@@ -99,7 +99,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" />
                 <RowDefinition Height="20" />
-                <RowDefinition Height="100" />
+                <RowDefinition Name="SymbolPanelRow" Height="{ui:AutoSave 100}" />
             </Grid.RowDefinitions>
             <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" SelectionMode="Single">
                 <ListView.ItemTemplate>
