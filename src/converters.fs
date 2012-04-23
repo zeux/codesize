@@ -1,4 +1,4 @@
-namespace Converters
+namespace UI
 
 open System.Windows
 open System.Windows.Markup
