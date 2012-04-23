@@ -3,7 +3,8 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        xmlns:avalonedit="http://icsharpcode.net/sharpdevelop/avalonedit"
-       Name="EditorWindow" Title="editor" Height="300" Width="700">
+       xmlns:ui="clr-namespace:UI;assembly=codesize"
+       Name="EditorWindow" Title="editor" Height="300" Width="700" ui:Window.AutoSavePlacement="True">
     <Grid>
         <avalonedit:TextEditor Name="TextEditor" SyntaxHighlighting="C++" ShowLineNumbers="True" IsReadOnly="True" />
     </Grid>
