@@ -18,7 +18,7 @@ let app = Application(ShutdownMode = ShutdownMode.OnMainWindowClose)
 
 let settingsPath = sprintf "%s\\codesize\\settings.xml" $ Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
 
-try UI.Settings.current.Load settingsPath with _ -> ()
+if File.Exists(settingsPath) then try UI.Settings.current.Load settingsPath with _ -> ()
 app.Exit.Add(fun _ -> try UI.Settings.current.Save settingsPath with _ -> ())
 
 let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Relative)) :?> Window
