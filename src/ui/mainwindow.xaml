@@ -118,8 +118,8 @@
             </Grid.RowDefinitions>
             <Grid Name="WelcomePanel" Grid.Row="0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="500" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="250" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Margin="4">
                     <TextBlock Text="Welcome" FontSize="14" />
