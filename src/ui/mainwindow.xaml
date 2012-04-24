@@ -79,7 +79,7 @@
                         <ColumnDefinition />
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Prefix:" Grid.Row="0" Grid.Column="0"/>
-                    <ComboBox Name="GroupPrefix" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}" Grid.Row="0" Grid.Column="1">
+                    <ComboBox Name="GroupPrefix" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 1}" Grid.Row="0" Grid.Column="1">
                         <ComboBoxItem Content="Letter"/>
                         <ComboBoxItem Content="Word"/>
                     </ComboBox>
