@@ -2,6 +2,7 @@ namespace Symbols
 
 open System
 open System.Collections
+open System.Collections.Concurrent
 
 open Dia2Lib
 
@@ -75,23 +76,20 @@ module private DIA =
 
     // get line information from file
     let getLines (session: IDiaSession) =
-        session.findFile(null, null, 0u)
-        |> toSeq
-        |> Seq.collect (fun file ->
-            let path = file.fileName
+        let pathCache = ConcurrentDictionary<uint32, string>()
+        let pathCacheGet = Func<_, _>(fun id -> session.findFileById(id).fileName)
 
-            file.compilands
-            |> toSeq
-            |> Seq.collect (fun comp ->
-                session.findLines(comp, file)
-                |> toSeq
-                |> Seq.map (fun line ->
-                    { address = uint64 line.relativeVirtualAddress
-                      size = uint64 line.length
-                      file = path
-                      lineBegin = int line.lineNumber
-                      lineEnd = int line.lineNumberEnd} )))
+        toSeq $ session.findLinesByRVA(0u, ~~~0u)
         |> Seq.toArray
+        |> Array.map (fun line ->
+            let path = pathCache.GetOrAdd(line.sourceFileId, pathCacheGet)
+
+            { address = uint64 line.relativeVirtualAddress
+              size = uint64 line.length
+              file = path
+              lineBegin = int line.lineNumber
+              lineEnd = int line.lineNumberEnd} )
+
 
 type DiaSymbolSource(source: IDiaDataSource) =
     let session = source.openSession()
