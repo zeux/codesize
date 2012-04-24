@@ -464,7 +464,7 @@ let jumpToSymbol (ess: ISymbolSource) (sym: Symbol) =
             match ess.GetFileLine sym.address with
             | Some (file, line) ->
                 let path = pathRemap file
-                if File.Exists(path) then Some (file, line)
+                if File.Exists(path) then Some (path, line)
                 else None
             | _ -> None
 
