@@ -3,7 +3,7 @@ namespace Symbols
 open Dia2Lib
 
 type PdbSymbolSource(path) =
-    let source = DiaSourceClass()
+    let source = DiaSymbolSource.CreateSource ()
 
     do
         DiaMemoryStream.PrefetchFile(path)

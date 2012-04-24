@@ -2,8 +2,34 @@ namespace Symbols
 
 open System
 open System.Collections
+open System.Runtime.InteropServices
 
 open Dia2Lib
+
+module private DIACreate =
+    [<Literal>]
+    let GUID = UnmanagedType.LPStruct
+
+    [<DllImport("msdia110")>]
+    extern int DllGetClassObject( [<MarshalAs(GUID)>] Guid clsid, [<MarshalAs(GUID)>] Guid iid, [<Out>] nativeint& ppv)
+
+    [<ComVisible(false)>]
+    [<ComImport; InterfaceType(ComInterfaceType.InterfaceIsIUnknown); Guid("00000001-0000-0000-C000-000000000046")>]
+    [<Interface>]
+    type IClassFactory =
+        abstract member CreateInstance: outer:nativeint * [<MarshalAs(GUID)>] iid:Guid * punk:byref<nativeint> -> unit
+        abstract member LockServer: bool -> unit
+
+    let create<'I> (clsid: Guid) =
+        // get class factory
+        let mutable punk = 0n
+        Marshal.ThrowExceptionForHR(DllGetClassObject(clsid, Marshal.GenerateGuidForType(typeof<IClassFactory>), &punk))
+        let factory = Marshal.GetTypedObjectForIUnknown(punk, typeof<IClassFactory>) :?> IClassFactory
+
+        // create class instance
+        let mutable punki = 0n
+        factory.CreateInstance(0n, Marshal.GenerateGuidForType(typeof<'I>), &punki)
+        Marshal.GetTypedObjectForIUnknown(punki, typeof<'I>) :?> 'I
 
 module private DIA =
     type LocationType =
@@ -129,3 +155,6 @@ type DiaSymbolSource(source: IDiaDataSource) =
             match lines.Next(1u) with
             | line, 1u -> Some (line.sourceFile.fileName, int line.lineNumber)
             | _ -> None
+
+    static member CreateSource() =
+        DIACreate.create<IDiaDataSource> $ Guid("{761D3BCD-1304-41D5-94E8-EAC54E4AC172}")

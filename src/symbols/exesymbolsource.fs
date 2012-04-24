@@ -3,7 +3,7 @@ namespace Symbols
 open Dia2Lib
 
 type ExeSymbolSource(path) =
-    let source = DiaSourceClass()
+    let source = DiaSymbolSource.CreateSource ()
     do source.loadDataForExe(path, null, null)
 
     let ss = DiaSymbolSource(source) :> ISymbolSource
