@@ -4,7 +4,10 @@ open Dia2Lib
 
 type PdbSymbolSource(path) =
     let source = DiaSourceClass()
-    do source.loadDataFromPdb(path)
+
+    do
+        DiaMemoryStream.PrefetchFile(path)
+        source.loadDataFromPdb(path)
 
     let ss = DiaSymbolSource(source) :> ISymbolSource
 
