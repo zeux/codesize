@@ -67,6 +67,9 @@ module controls =
     let symbolPanel = window?SymbolPanel :?> GroupBox
     let contentsTree = window?ContentsTree :?> TreeView
     let contentsList = window?ContentsList :?> ListView
+    let welcomePanel = window?WelcomePanel :?> Grid
+    let welcomeOpenLink = window?WelcomeOpenLink :?> Hyperlink
+    let welcomeRecentPanel = window?WelcomeRecentPanel :?> StackPanel
 
 let getFilterTextFn typ (text: string) =
     let contains (s: string) (p: string) = s.IndexOf(p, StringComparison.InvariantCultureIgnoreCase) >= 0
@@ -270,7 +273,7 @@ let deactivateView (view: ItemsControl) =
 let activateView (view: ItemsControl) =
     view.Visibility <- Visibility.Visible
 
-let rebindToViewSymbolsAsync (ess: ISymbolSource) view =
+let rebindToViewSymbolsAsync (ess: ISymbolSource) view switchView =
     async {
         let! token = Async.CancellationToken
 
@@ -289,18 +292,22 @@ let rebindToViewSymbolsAsync (ess: ISymbolSource) view =
             let nodes = TreeView.getNodes items prefix
 
             do! AsyncUI.switchToUI ()
+
+            switchView ()
             controls.contentsTree.ItemsSource <- nodes
         | controls.DisplayView.List ->
             let items = syms |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
 
             do! AsyncUI.switchToUI ()
+
+            switchView ()
             controls.contentsList.ItemsSource <- items
         | e -> failwithf "Unknown view %O" e
 
         controls.labelStatus.Text <- "Total: " + stats
     }
 
-let rebindToViewFilesAsync (ess: ISymbolSource) view =
+let rebindToViewFilesAsync (ess: ISymbolSource) view switchView =
     async {
         let! token = Async.CancellationToken
 
@@ -325,11 +332,15 @@ let rebindToViewFilesAsync (ess: ISymbolSource) view =
             let nodes = TreeView.getNodes items prefix
 
             do! AsyncUI.switchToUI ()
+
+            switchView ()
             controls.contentsTree.ItemsSource <- nodes
         | controls.DisplayView.List ->
             let items = files |> Array.sortBy (fun sym -> token.ThrowIfCancellationRequested(); ~~~sym.size)
 
             do! AsyncUI.switchToUI ()
+
+            switchView ()
             controls.contentsList.ItemsSource <- items
         | e -> failwithf "Unknown view %O" e
 
@@ -343,23 +354,24 @@ let rebindToViewAsync (ess: ISymbolSource) =
         let view = enum controls.displayView.SelectedIndex
         let data = enum controls.displayData.SelectedIndex
 
-        match view with
-        | controls.DisplayView.Tree ->
-            deactivateView controls.contentsList
-            activateView controls.contentsTree
-        | controls.DisplayView.List ->
-            deactivateView controls.contentsTree
-            activateView controls.contentsList
-        | e -> failwithf "Unknown view %O" e
-
         controls.labelStatus.Text <- "Filtering..."
+
+        let switchView () =
+            match view with
+            | controls.DisplayView.Tree ->
+                deactivateView controls.contentsList
+                activateView controls.contentsTree
+            | controls.DisplayView.List ->
+                deactivateView controls.contentsTree
+                activateView controls.contentsList
+            | e -> failwithf "Unknown view %O" e
 
         try
             match data with
             | controls.DisplayData.Symbols ->
-                do! rebindToViewSymbolsAsync ess view
+                do! rebindToViewSymbolsAsync ess view switchView
             | controls.DisplayData.Files ->
-                do! rebindToViewFilesAsync ess view
+                do! rebindToViewFilesAsync ess view switchView
             | e -> failwithf "Unknown data %O" e
         with
         | :? OperationCanceledException -> ()
@@ -524,18 +536,7 @@ let getSymbolSource path =
     | e ->
         failwithf "Unknown extension %s" e
 
-window.Loaded.Add(fun _ ->
-    let path =
-        if Environment.GetCommandLineArgs().Length > 1 then
-            Environment.GetCommandLineArgs().[1]
-        else
-            let dlg = OpenFileDialog(Filter = "Supported files|*.elf;*.self;*.pdb")
-            let res = dlg.ShowDialog(window)
-            if res.HasValue && res.Value then
-                dlg.FileName
-            else
-                exit 0
-
+let loadFile path =
     window.IsEnabled <- false
     window.Title <- sprintf "%s - %s" window.Title path
     controls.panelLoading.Visibility <- Visibility.Visible
@@ -546,6 +547,24 @@ window.Loaded.Add(fun _ ->
         do! bindToViewAsync ess
         window.IsEnabled <- true
         controls.panelLoading.Visibility <- Visibility.Hidden
-    } |> Async.Start)
+        controls.welcomePanel.Visibility <- Visibility.Hidden
+    } |> Async.Start
+
+let getOpenFileName () =
+    let dlg = OpenFileDialog(Filter = "Supported files|*.elf;*.self;*.pdb", CheckFileExists = true)
+    let res = dlg.ShowDialog(window)
+    if res.HasValue && res.Value then
+        Some dlg.FileName
+    else
+        None
+
+window.Loaded.Add(fun _ ->
+    controls.welcomeOpenLink.Click.Add(fun _ ->
+        match getOpenFileName () with
+        | Some path -> loadFile path
+        | None -> ())
+
+    if Environment.GetCommandLineArgs().Length > 1 then
+        loadFile $ Environment.GetCommandLineArgs().[1])
 
 app.Run(window) |> ignore

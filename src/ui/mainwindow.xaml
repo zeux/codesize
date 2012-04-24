@@ -116,6 +116,51 @@
                 <RowDefinition Height="20" />
                 <RowDefinition Name="SymbolPanelRow" Height="{ui:AutoSave 70}" />
             </Grid.RowDefinitions>
+            <Grid Name="WelcomePanel" Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="500" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="4">
+                    <TextBlock Text="Welcome" FontSize="14" />
+                    <TextBlock />
+                    <TextBlock TextWrapping="Wrap">
+codesize is a tool that can help you find redundant or excessive code in your application.
+<LineBreak /><LineBreak />
+You can start by loading a file that contains debug information for your application
+(it's usually the PDB file for Microsoft toolchains and ELF file for binutils-based ones).
+<LineBreak /><LineBreak />
+Any issues or suggestions should be reported at
+<Hyperlink NavigateUri="http://hg.zeuxcg.org/codesize">http://hg.zeuxcg.org/codesize</Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="4">
+                    <TextBlock Text="Start" FontSize="14" />
+                    <TextBlock Margin="4,2,0,0">
+                        <Hyperlink Name="WelcomeOpenLink">
+                            <Hyperlink.Style>
+                                <Style>
+                                    <Style.Triggers>
+                                        <Trigger Property="Hyperlink.IsMouseOver" Value="False">
+                                            <Setter Property="TextBlock.TextDecorations" Value="{x:Null}" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Hyperlink.Style>
+                            Open file...
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock />
+                    <TextBlock Text="Recent files" FontSize="14" />
+                    <ScrollViewer Margin="4,2,0,0" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Name="WelcomeRecentPanel">
+                            <TextBlock Text="Foo" />
+                            <TextBlock Text="Bar" />
+                            <TextBlock Text="FooBar" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </StackPanel>
+            </Grid>
             <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" SelectionMode="Single">
                 <ListView.ItemTemplate>
                     <DataTemplate>
@@ -173,7 +218,7 @@
             </GroupBox>
         </Grid>
         <Grid Row="1">
-            <Grid Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Background="Gainsboro" UseLayoutRounding="True">
+            <Grid Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Background="Gainsboro" UseLayoutRounding="True" Visibility="Hidden">
                 <Border BorderThickness="1" BorderBrush="DarkGray" />
                 <StackPanel Orientation="Vertical">
                     <TextBlock Name="LabelLoading" Text="Loading..." HorizontalAlignment="Center" Margin="4" />
