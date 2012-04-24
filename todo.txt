@@ -1,12 +1,24 @@
-- PDB support
-- path normalization (for file/line vis and file jump)
-- 'guard variable for', 'vtable for', 'non-virtual thunk to' are usually useful as suffixes - grouping option? (ideally need to xform symbol names here)
-- autosave/load UI settings to config file
-- refactor some code with wpf bindings
-- better async wpf helpers
-- set/reset root for treeview
-- add support for external editors (vs/vim/emacs/notepad++/...?)
+first look fixes:
+- welcome screen
 - fix binutils parsing of dwarf decodedline for some elf files (addr2line works but objdump fails)
+- exception window
+
+grouping details:
+- 'guard variable for', 'vtable for', 'non-virtual thunk to' are usually useful as suffixes - grouping option? (ideally need to xform symbol names here)
+- even if word prefix is selected, it may make sense to complete prefix names letter by letter? (i.e. D3DCreateDevice vs D3DXCreateTexture)
+
+ui responsiveness:
+- loading panel should pop up when we compute symbols/filelines
+- faster filtering (cache individual parts, only recompute what is affected by UI changes? esp. applicable to FileLine grouping)
+- async treeview group expansion (async binding + custom styling to indicate that node contents is being computed)
+
+editor:
+- copy full path, open folder
+- add support for external editors (vs/vim/emacs/notepad++/...?)
 - internal editor can display size per line in an extra column?..
+
+other features:
+- set/reset root for treeview
 - better extension support (pyd/mll) & filters
-- open another file from within the same process? :)
+- open another file from within the same process
+- diff between two files (need to figure out sorting criteria and to ensure that we don't keep two full datasets in memory)
