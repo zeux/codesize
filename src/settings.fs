@@ -85,23 +85,28 @@ module Settings =
 type AutoSave(defaultValue) =
     inherit MarkupExtension()
 
+    new() = AutoSave("")
+
     override this.ProvideValue(sp) =
         match sp.GetService(typeof<IProvideValueTarget>) with
         | :? IProvideValueTarget as target ->
             let tobj = target.TargetObject :?> DependencyObject
             let tprop = target.TargetProperty :?> DependencyProperty
 
-            let name = tobj.GetType().GetProperty("Name").GetValue(tobj, [||]) :?> string
+            if DesignerProperties.GetIsInDesignMode(tobj) then
+                Binding(Source = defaultValue, Mode = BindingMode.OneTime).ProvideValue(sp)
+            else
+                let name = tobj.GetType().GetProperty("Name").GetValue(tobj, [||]) :?> string
 
-            if String.IsNullOrEmpty(name) then
-                failwith "AutoSave properties require parent element to have a name"
+                if String.IsNullOrEmpty(name) then
+                    failwith "AutoSave properties require parent element to have a name"
 
-            let item = Settings.current.[sprintf "%s/%s" name tprop.Name]
+                let item = Settings.current.[sprintf "%s/%s" name tprop.Name]
 
-            if item.Value = null then
-                item.Value <- TypeDescriptor.GetConverter(tprop.PropertyType).ConvertFromInvariantString(defaultValue)
+                if item.Value = null then
+                    item.Value <- TypeDescriptor.GetConverter(tprop.PropertyType).ConvertFromInvariantString(defaultValue)
 
-            Binding(Source = item, Path = PropertyPath("Value"), Mode = BindingMode.TwoWay).ProvideValue(sp)
+                Binding(Source = item, Path = PropertyPath("Value"), Mode = BindingMode.TwoWay).ProvideValue(sp)
         | _ -> null
 
 type Window() =
