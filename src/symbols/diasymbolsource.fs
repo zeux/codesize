@@ -11,7 +11,23 @@ module private DIA =
 
     [<Flags>]
     type UNDNAME =
-    | NAME_ONLY = 0x1000
+    | COMPLETE               = 0x0000
+    | NO_LEADING_UNDERSCORES = 0x0001
+    | NO_MS_KEYWORDS         = 0x0002
+    | NO_FUNCTION_RETURNS    = 0x0004
+    | NO_ALLOCATION_MODEL    = 0x0008
+    | NO_ALLOCATION_LANGUAGE = 0x0010
+    | NO_MS_THISTYPE         = 0x0020
+    | NO_CV_THISTYPE         = 0x0040
+    | NO_THISTYPE            = 0x0060
+    | NO_ACCESS_SPECIFIERS   = 0x0080
+    | NO_THROW_SIGNATURES    = 0x0100
+    | NO_MEMBER_TYPE         = 0x0200
+    | NO_RETURN_UDT_MODEL    = 0x0400
+    | _32_BIT_DECODE         = 0x0800
+    | NAME_ONLY              = 0x1000
+    | NO_ARGUMENTS           = 0x2000
+    | NO_SPECIAL_SYMS        = 0x4000
 
     // helpers to iterate IDiaEnum* objects
     let inline toSeq (o: ^T) =
@@ -49,6 +65,20 @@ module private DIA =
         | SymTagEnum.SymTagData -> sym.``type``.length
         | t -> failwithf "Unknown symbol tag %O" t
 
+    // get symbol name
+    let getSymbolName (sym: IDiaSymbol) =
+        let undflags =
+            UNDNAME.NO_MS_KEYWORDS |||
+            UNDNAME.NO_FUNCTION_RETURNS |||
+            UNDNAME.NO_ALLOCATION_MODEL |||
+            UNDNAME.NO_ALLOCATION_LANGUAGE |||
+            UNDNAME.NO_ACCESS_SPECIFIERS |||
+            UNDNAME.NO_MEMBER_TYPE
+
+        let undname = sym.get_undecoratedNameEx(uint32 undflags)
+        let name = if undname = null then sym.name else undname
+        name.Replace("`", "")
+
     // get symbol information from file
     let getSymbols (session: IDiaSession) =
         // get section names
@@ -60,15 +90,13 @@ module private DIA =
         |> Seq.filter (fun s -> s.locationType = uint32 LocationType.LocIsStatic)
         |> Seq.toArray
         |> Array.map (fun s ->
-            let size = getSymbolSize s
-            let undname = s.get_undecoratedNameEx(uint32 UNDNAME.NAME_ONLY)
             let section = int s.addressSection
             let section_name = if section > 0 && section <= sections.Length then sections.[section - 1] else "" 
 
             { address = uint64 s.relativeVirtualAddress
-              size = size
+              size = getSymbolSize s
               section = section_name
-              name = if undname <> null then undname else s.name })
+              name = getSymbolName s })
 
     // get line information from file
     let getLines (session: IDiaSession) =
