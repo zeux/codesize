@@ -529,8 +529,6 @@ let getSymbolSource path =
         SelfSymbolSource(path) :> ISymbolSource
     | ".pdb" ->
         PdbSymbolSource(path) :> ISymbolSource
-    | ".exe" | ".dll" ->
-        ExeSymbolSource(path) :> ISymbolSource
     | e ->
         failwithf "Unknown extension %s" e
 
@@ -539,7 +537,7 @@ window.Loaded.Add(fun _ ->
         if Environment.GetCommandLineArgs().Length > 1 then
             Environment.GetCommandLineArgs().[1]
         else
-            let dlg = OpenFileDialog(Filter = "Executable files|*.elf;*.self;*.pdb;*.exe;*.dll")
+            let dlg = OpenFileDialog(Filter = "Supported files|*.elf;*.self;*.pdb")
             let res = dlg.ShowDialog(window)
             if res.HasValue && res.Value then
                 dlg.FileName
