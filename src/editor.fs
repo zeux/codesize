@@ -60,7 +60,8 @@ type Window() as this =
     member this.Open(file, line, ?highlightRange) =
         window.Title <- file
 
-        editor.Load(file)
+        try editor.Load(file)
+        with e -> editor.Text <- e.Message
 
         if editor.IsLoaded then
             editor.ScrollToLine(line)
