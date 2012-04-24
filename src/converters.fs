@@ -1,11 +1,8 @@
 namespace UI
 
-open System.Drawing
 open System.Windows
 open System.Windows.Markup
-open System.Windows.Media
 open System.Windows.Data
-open System.Windows.Interop
 
 open Symbols
 
@@ -68,10 +65,3 @@ type TreeNodeItems() =
 type BoolToVisibility() =
     inherit FnConverter<bool, Visibility>(fun item ->
         if item then Visibility.Visible else Visibility.Hidden)
-
-type FileToImageIcon() =
-    inherit FnConverter<string, ImageSource>(fun path ->
-        use icon = Icon.ExtractAssociatedIcon(path)
-        let options = Imaging.BitmapSizeOptions.FromEmptyOptions()
-        let source = Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, options)
-        source :> ImageSource)

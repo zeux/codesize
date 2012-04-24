@@ -2,6 +2,7 @@ module codesize.Program
 
 open System
 open System.Collections.Generic
+open System.Drawing
 open System.IO
 open System.Text
 open System.Text.RegularExpressions
@@ -10,6 +11,7 @@ open System.Windows.Controls
 open System.Windows.Data
 open System.Windows.Documents
 open System.Windows.Input
+open System.Windows.Interop
 open System.Windows.Media
 open Microsoft.Win32
 
@@ -163,7 +165,7 @@ let getGroupSymbolFn () =
     | controls.GroupTemplates.None ->
         id
     | controls.GroupTemplates.MergeAllTypes ->
-        templateConvertArgs (fun arg -> "T")
+        templateConvertArgs (fun arg -> "?")
     | controls.GroupTemplates.MergeIncompatibleTypes ->
         templateConvertArgs (fun arg ->
             let at = arg.Trim()
@@ -590,41 +592,56 @@ controls.welcomeRecentPanel.Loaded.Add(fun _ ->
 
         do! AsyncUI.switchToUI ()
 
-        let iconv = UI.FileToImageIcon()
+        let icons =
+            paths
+            |> Array.map (fun path ->
+                let name = Path.GetFileName(path)
 
-        for path in paths do
-            let name = Path.GetFileName(path)
+                let line =
+                    StackPanel(
+                        Orientation = Orientation.Horizontal,
+                        ToolTip = path,
+                        HorizontalAlignment = HorizontalAlignment.Left)
 
-            let line =
-                StackPanel(
-                    Orientation = Orientation.Horizontal,
-                    ToolTip = path,
-                    HorizontalAlignment = HorizontalAlignment.Left)
+                line.Cursor <- Cursors.Hand
 
-            line.Cursor <- Cursors.Hand
+                let tb =
+                    TextBlock( Text = name,
+                        Padding = Thickness(2.0, 2.0, 2.0, 2.0))
 
-            let tb =
-                TextBlock( Text = name,
-                    Padding = Thickness(2.0, 2.0, 2.0, 2.0))
+                line.MouseDown.Add(fun _ -> loadFile path)
 
-            line.MouseDown.Add(fun _ -> loadFile path)
+                let icon = Image(Width = 16.0, Height = 16.0)
 
-            let icon = Image(Width = 16.0, Height = 16.0)
-            icon.SetBinding(Image.SourceProperty, Binding(Source = path, Converter = iconv, IsAsync = true, Mode = BindingMode.OneTime))
-            |> ignore
+                let updateLine () =
+                    line.Background <- if line.IsMouseOver then Brushes.Gainsboro else Brushes.Transparent
+                    tb.Foreground <- if line.IsMouseOver then Brushes.DodgerBlue else Brushes.Black
 
-            let updateLine () =
-                line.Background <- if line.IsMouseOver then Brushes.Gainsboro else Brushes.Transparent
-                tb.Foreground <- if line.IsMouseOver then Brushes.DodgerBlue else Brushes.Black
+                line.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
+                tb.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
+                icon.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
 
-            line.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
-            tb.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
-            icon.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
+                line.Children.Add(icon) |> ignore
+                line.Children.Add(tb) |> ignore
 
-            line.Children.Add(icon) |> ignore
-            line.Children.Add(tb) |> ignore
+                controls.welcomeRecentPanel.Children.Add(line) |> ignore
 
-            controls.welcomeRecentPanel.Children.Add(line) |> ignore
+                async {
+                    do! AsyncUI.switchToWork ()
+
+                    try
+                        use ico = Icon.ExtractAssociatedIcon(path)
+
+                        do! AsyncUI.switchToUI ()
+
+                        let options = Imaging.BitmapSizeOptions.FromEmptyOptions()
+                        let source = Imaging.CreateBitmapSourceFromHIcon(ico.Handle, Int32Rect.Empty, options)
+                        icon.Source <- source :> ImageSource
+                    with _ -> ()
+                })
+
+        for i in icons do
+            do! i
     } |> Async.Start)
 
 window.Loaded.Add(fun _ ->
