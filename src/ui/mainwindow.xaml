@@ -131,12 +131,12 @@ You can start by loading a file that contains debug information for your applica
 (it's usually the PDB file for Microsoft toolchains and ELF file for binutils-based ones).
 <LineBreak /><LineBreak />
 Any issues or suggestions should be reported at
-<Hyperlink NavigateUri="http://hg.zeuxcg.org/codesize">http://hg.zeuxcg.org/codesize</Hyperlink>
+<Hyperlink NavigateUri="http://hg.zeuxcg.org/codesize" ui:Hyperlink.NavigateToUri="True">http://hg.zeuxcg.org/codesize</Hyperlink>
                     </TextBlock>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Margin="4">
-                    <TextBlock Text="Start" FontSize="14" />
-                    <TextBlock Margin="4,2,0,0">
+                <DockPanel Grid.Column="1" Margin="4">
+                    <TextBlock Text="Start" FontSize="14" DockPanel.Dock="Top" />
+                    <TextBlock Margin="4,2,0,0" DockPanel.Dock="Top">
                         <Hyperlink Name="WelcomeOpenLink">
                             <Hyperlink.Style>
                                 <Style>
@@ -150,16 +150,13 @@ Any issues or suggestions should be reported at
                             Open file...
                         </Hyperlink>
                     </TextBlock>
-                    <TextBlock />
-                    <TextBlock Text="Recent files" FontSize="14" />
-                    <ScrollViewer Margin="4,2,0,0" VerticalScrollBarVisibility="Auto">
+                    <TextBlock DockPanel.Dock="Top"/>
+                    <TextBlock Text="Recent files" FontSize="14" DockPanel.Dock="Top"/>
+                    <ScrollViewer Margin="2,0,0,0" VerticalScrollBarVisibility="Auto">
                         <StackPanel Name="WelcomeRecentPanel">
-                            <TextBlock Text="Foo" />
-                            <TextBlock Text="Bar" />
-                            <TextBlock Text="FooBar" />
                         </StackPanel>
                     </ScrollViewer>
-                </StackPanel>
+                </DockPanel>
             </Grid>
             <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" SelectionMode="Single">
                 <ListView.ItemTemplate>

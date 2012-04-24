@@ -1,8 +1,11 @@
 namespace UI
 
+open System
+open System.Diagnostics
 open System.Windows
 open System.Windows.Controls
 open System.Windows.Input
+open System.Windows.Navigation
 
 type TextBox() =
     static let handler = 
@@ -23,3 +26,24 @@ type TextBox() =
                 element.MouseDoubleClick.RemoveHandler(handler)
 
             element.SetValue(doubleClickSelectsAll, value)
+
+type Hyperlink() =
+    static let navigateToUri =
+        DependencyProperty.RegisterAttached("NavigateToUri",
+            typeof<bool>, typeof<Documents.Hyperlink>, PropertyMetadata(false))
+
+    static let handler =
+        RequestNavigateEventHandler(fun e args ->
+            Process.Start(args.Uri.ToString()) |> ignore)
+
+    static member GetNavigateToUri(element: Documents.Hyperlink) =
+        element.GetValue(navigateToUri) :?> bool
+
+    static member SetNavigateToUri(element: Documents.Hyperlink, value: bool) =
+        if value <> Hyperlink.GetNavigateToUri element then
+            if value then
+                element.RequestNavigate.AddHandler(handler)
+            else
+                element.RequestNavigate.RemoveHandler(handler)
+
+            element.SetValue(navigateToUri, value)

@@ -7,7 +7,9 @@ open System.Text
 open System.Text.RegularExpressions
 open System.Windows
 open System.Windows.Controls
+open System.Windows.Data
 open System.Windows.Documents
+open System.Windows.Input
 open System.Windows.Media
 open Microsoft.Win32
 
@@ -536,6 +538,23 @@ let getSymbolSource path =
     | e ->
         failwithf "Unknown extension %s" e
 
+let getRecentFileList () =
+    match UI.Settings.current.["RecentFiles"].Value with
+    | :? string as s ->
+        s.Split([|'*'|], StringSplitOptions.RemoveEmptyEntries)
+        |> Array.filter (fun path -> File.Exists(path))
+    | _ -> [||]
+
+let updateRecentFileList path =
+    let list = getRecentFileList ()
+
+    UI.Settings.current.["RecentFiles"].Value <-
+        list
+        |> Seq.filter (fun p -> Path.GetFullPath(p).ToLower() <> Path.GetFullPath(path).ToLower())
+        |> Seq.append [path]
+        |> Seq.truncate 10
+        |> String.concat "*"
+
 let loadFile path =
     window.IsEnabled <- false
     window.Title <- sprintf "%s - %s" window.Title path
@@ -547,7 +566,9 @@ let loadFile path =
         do! bindToViewAsync ess
         window.IsEnabled <- true
         controls.panelLoading.Visibility <- Visibility.Hidden
+
         controls.welcomePanel.Visibility <- Visibility.Hidden
+        updateRecentFileList path
     } |> Async.Start
 
 let getOpenFileName () =
@@ -558,12 +579,55 @@ let getOpenFileName () =
     else
         None
 
-window.Loaded.Add(fun _ ->
-    controls.welcomeOpenLink.Click.Add(fun _ ->
-        match getOpenFileName () with
-        | Some path -> loadFile path
-        | None -> ())
+controls.welcomeOpenLink.Click.Add(fun _ ->
+    match getOpenFileName () with
+    | Some path -> loadFile path
+    | None -> ())
 
+controls.welcomeRecentPanel.Loaded.Add(fun _ ->
+    async {
+        let paths = getRecentFileList ()
+
+        do! AsyncUI.switchToUI ()
+
+        let iconv = UI.FileToImageIcon()
+
+        for path in paths do
+            let name = Path.GetFileName(path)
+
+            let line =
+                StackPanel(
+                    Orientation = Orientation.Horizontal,
+                    ToolTip = path,
+                    HorizontalAlignment = HorizontalAlignment.Left)
+
+            line.Cursor <- Cursors.Hand
+
+            let tb =
+                TextBlock( Text = name,
+                    Padding = Thickness(2.0, 2.0, 2.0, 2.0))
+
+            line.MouseDown.Add(fun _ -> loadFile path)
+
+            let icon = Image(Width = 16.0, Height = 16.0)
+            icon.SetBinding(Image.SourceProperty, Binding(Source = path, Converter = iconv, IsAsync = true, Mode = BindingMode.OneTime))
+            |> ignore
+
+            let updateLine () =
+                line.Background <- if line.IsMouseOver then Brushes.Gainsboro else Brushes.Transparent
+                tb.Foreground <- if line.IsMouseOver then Brushes.DodgerBlue else Brushes.Black
+
+            line.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
+            tb.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
+            icon.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
+
+            line.Children.Add(icon) |> ignore
+            line.Children.Add(tb) |> ignore
+
+            controls.welcomeRecentPanel.Children.Add(line) |> ignore
+    } |> Async.Start)
+
+window.Loaded.Add(fun _ ->
     if Environment.GetCommandLineArgs().Length > 1 then
         loadFile $ Environment.GetCommandLineArgs().[1])
 
