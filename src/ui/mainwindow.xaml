@@ -3,7 +3,7 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        xmlns:ui="clr-namespace:UI;assembly=codesize"
-       Name="MainWindow" Title="codesize" Height="342" Width="768" ResizeMode="CanResizeWithGrip" ui:Window.AutoSavePlacement="True">
+       Name="MainWindow" Title="codesize" Height="342" Width="941" ResizeMode="CanResizeWithGrip" ui:Window.AutoSavePlacement="True">
     <Window.Resources>
         <Style x:Key="VisibleForSymbols" TargetType="FrameworkElement">
             <Setter Property="Visibility" Value="{Binding ElementName=DisplayDataSymbols, Path=IsSelected, Converter={ui:BoolToVisibility}}" />
@@ -53,7 +53,7 @@
                     </Grid.ColumnDefinitions>
                     <TextBlock Text="Name:" Grid.Row="0" Grid.Column="0"/>
                     <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1">
-                        <TextBox Name="FilterText" Height="21" Margin="4,0,0,4" TextWrapping="Wrap" VerticalAlignment="Top" HorizontalAlignment="Left" Width="208" />
+                        <TextBox Name="FilterText" Height="21" Margin="4,0,0,4" TextWrapping="Wrap" VerticalAlignment="Top" HorizontalAlignment="Left" Width="176" />
                         <ComboBox Name="FilterTextType" HorizontalAlignment="Right" Height="21" Margin="4,0,0,0" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}">
                             <ComboBoxItem Content="Words"/>
                             <ComboBoxItem Content="Phrase"/>
@@ -65,11 +65,10 @@
                         <ComboBox Name="FilterSections" Height="21" Margin="4,0" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="2" Grid.Column="1" Width="122" />
                         <TextBlock Text="Size: >= " Margin="4,0,0,0" />
                         <TextBox Name="FilterSize" Height="21" Margin="0,0,0,4" TextWrapping="Wrap" VerticalAlignment="Top" Width="60" Text="0" />
-                        <TextBlock Text=" bytes" />
                     </StackPanel>
                 </Grid>
             </GroupBox>
-            <GroupBox Header="Grouping" HorizontalAlignment="Left" Height="80" Margin="4,4,4,0" VerticalAlignment="Top" Width="251" Padding="4">
+            <GroupBox Header="Grouping" HorizontalAlignment="Left" Height="80" Margin="4,4,4,0" VerticalAlignment="Top" Width="200" Padding="4">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -87,11 +86,27 @@
                     <TextBlock Text="Templates:" Grid.Row="1" Grid.Column="0" Style="{StaticResource VisibleForSymbols}" />
                     <ComboBox Name="GroupTemplates" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}" Grid.Row="1" Grid.Column="1" Style="{StaticResource VisibleForSymbols}">
                         <ComboBoxItem Content="None"/>
-                        <ComboBoxItem Content="Merge all types"/>
-                        <ComboBoxItem Content="Merge incompatible types"/>
+                        <ComboBoxItem Content="Merge all"/>
+                        <ComboBoxItem Content="Merge incompatible"/>
                     </ComboBox>
                     <TextBlock Text="Line merge:" Grid.Row="1" Grid.Column="0" Style="{StaticResource VisibleForFiles}" />
                     <TextBox Name="GroupLineMerge" Height="21" Margin="4,0,4,4" Grid.Row="1" Grid.Column="1" Text="{ui:AutoSave 1}" Style="{StaticResource VisibleForFiles}" />
+                </Grid>
+            </GroupBox>
+            <GroupBox Header="Path remapping" HorizontalAlignment="Left" Height="80" Margin="4,4,4,0" VerticalAlignment="Top" Width="200" Padding="4">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Source:" Grid.Row="0" Grid.Column="0"/>
+                    <TextBox Name="PathRemapSource" Height="21" Margin="4,0,4,4" Grid.Row="0" Grid.Column="1" Text="{ui:AutoSave}" />
+                    <TextBlock Text="Target:" Grid.Row="1" Grid.Column="0" />
+                    <TextBox Name="PathRemapTarget" Height="21" Margin="4,0,4,4" Grid.Row="1" Grid.Column="1" Text="{ui:AutoSave}" />
                 </Grid>
             </GroupBox>
         </StackPanel>

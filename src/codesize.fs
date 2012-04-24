@@ -8,6 +8,7 @@ open System.Text.RegularExpressions
 open System.Windows
 open System.Windows.Controls
 open System.Windows.Documents
+open System.Windows.Media
 open Microsoft.Win32
 
 open Symbols
@@ -56,6 +57,8 @@ module controls =
     let groupTemplates = window?GroupTemplates :?> ComboBox
     let groupPrefix = window?GroupPrefix :?> ComboBox
     let groupLineMerge = window?GroupLineMerge :?> TextBox
+    let pathRemapSource = window?PathRemapSource :?> TextBox
+    let pathRemapTarget = window?PathRemapTarget :?> TextBox
     let panelLoading = window?PanelLoading :?> Panel
     let labelLoading = window?LabelLoading :?> TextBlock
     let labelStatus = window?LabelStatus :?> TextBlock
@@ -196,6 +199,25 @@ let getPrefixSymbolFn () =
     | _ ->
         failwithf "Unknown type %O" gp
 
+let getPathRemapFn () =
+    let source = controls.pathRemapSource.Text
+    let target = controls.pathRemapTarget.Text
+
+    controls.pathRemapSource.BorderBrush <- controls.pathRemapTarget.BorderBrush
+
+    let normalize path =
+        (try Path.GetFullPath(path) with _ -> path).ToLowerInvariant().Replace('\\', '/')
+
+    if source = "" then
+        normalize
+    else
+        try
+            let re = Regex(source, RegexOptions.IgnoreCase)
+            fun path -> re.Replace(normalize path, target, 1)
+        with _ ->
+            controls.pathRemapSource.BorderBrush <- Brushes.Red
+            normalize
+
 let getLineRangesForFile file (lines: FileLine seq) mergeDistance =
     let ranges = Stack<FileLineRange>()
 
@@ -208,14 +230,14 @@ let getLineRangesForFile file (lines: FileLine seq) mergeDistance =
 
     ranges.ToArray()
 
-let getLineRanges (ess: ISymbolSource) mergeDistance =
+let getLineRanges (ess: ISymbolSource) mergeDistance pathRemap =
     let normalizePath =
         let cache = Dictionary<string, string>()
         fun path ->
             let mutable value = null
             if cache.TryGetValue(path, &value) then value
             else
-                let result = try Path.GetFullPath(path).ToLower() with _ -> path.ToLower()
+                let result = pathRemap path
                 cache.Add(path, result)
                 result
 
@@ -296,11 +318,12 @@ let rebindToViewFilesAsync (ess: ISymbolSource) view =
             match Int32.TryParse(controls.groupLineMerge.Text) with
             | true, value -> value
             | _ -> 1
+        let pathRemap = getPathRemapFn ()
 
         do! AsyncUI.switchToWork ()
 
         let files =
-            getLineRanges ess mergeDistance
+            getLineRanges ess mergeDistance pathRemap
             |> Array.filter (fun file -> token.ThrowIfCancellationRequested(); filter file)
         let stats = getStatsFile files
 
@@ -396,13 +419,16 @@ let updateSelectedSymbol (ess: ISymbolSource) (item: obj) =
         controls.symbolLocation.Text <- "resolving..."
         controls.symbolLocationLink.Tag <- null
 
+        let pathRemap = getPathRemapFn ()
+
         async {
             do! AsyncUI.switchToWork ()
 
             let text, tag =
                 match ess.GetFileLine sym.address with
                 | Some (file, line) ->
-                    sprintf "%s (%d)" file line, (if File.Exists(file) then box (file, line) else null)
+                    let path = pathRemap file
+                    sprintf "%s (%d)" path line, (if File.Exists(path) then box (path, line) else null)
                 | None ->
                     "unknown", null
 
@@ -416,15 +442,30 @@ let updateSelectedSymbol (ess: ISymbolSource) (item: obj) =
         controls.symbolLocation.Text <- ""
         controls.symbolLocationLink.Tag <- null
 
+let updatePathRemap ess =
+    match enum controls.displayData.SelectedIndex, enum controls.displayView.SelectedIndex with
+    | controls.DisplayData.Symbols, controls.DisplayView.Tree ->
+        updateSelectedSymbol ess controls.contentsTree.SelectedItem
+    | controls.DisplayData.Symbols, controls.DisplayView.List ->
+        updateSelectedSymbol ess controls.contentsList.SelectedItem
+    | controls.DisplayData.Files, _ ->
+        rebindToView ess
+    | _ -> ()
+
 let jumpToAgent = AsyncUI.SingleUpdateAgent()
 
 let jumpToSymbol (ess: ISymbolSource) (sym: Symbol) =
+    let pathRemap = getPathRemapFn ()
+
     async {
         do! AsyncUI.switchToWork ()
 
         let fl =
             match ess.GetFileLine sym.address with
-            | Some (file, line) when File.Exists(file) -> Some (file, line)
+            | Some (file, line) ->
+                let path = pathRemap file
+                if File.Exists(path) then Some (file, line)
+                else None
             | _ -> None
 
         do! AsyncUI.switchToUI ()
@@ -462,6 +503,10 @@ let updateSymbolUI (ess: ISymbolSource) =
     controls.contentsList.SelectionChanged.Add(fun _ ->
         updateSelectedSymbol ess controls.contentsList.SelectedItem)
 
+let updatePathUI ess =
+    controls.pathRemapSource.TextChanged.Add(fun _ -> updatePathRemap ess)
+    controls.pathRemapTarget.TextChanged.Add(fun _ -> updatePathRemap ess)
+
 let bindToViewAsync (ess: ISymbolSource) =
     async {
         let sections = ess.Sections
@@ -471,6 +516,7 @@ let bindToViewAsync (ess: ISymbolSource) =
         updateDisplayUI ess
         updateFilterUI ess sections
         updateSymbolUI ess
+        updatePathUI ess
 
         do! rebindToViewAsync ess
     }
