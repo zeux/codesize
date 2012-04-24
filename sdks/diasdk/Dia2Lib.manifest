@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
-  <assemblyIdentity type="win32" name="Dia2Lib" version="2.0.0.0" />
-  <file name="msdia110.dll">
-    <comClass clsid="{761D3BCD-1304-41D5-94E8-EAC54E4AC172}" threadingModel="both" />
-    <typelib tlbid="{106173A0-0173-4e5c-84E7-E915422BE997}" version="1.0" helpdir="" />
-  </file>
-</assembly>
