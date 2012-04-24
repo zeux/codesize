@@ -231,18 +231,10 @@ let getLineRangesForFile file (lines: FileLine seq) mergeDistance =
     ranges.ToArray()
 
 let getLineRanges (ess: ISymbolSource) mergeDistance pathRemap =
-    let normalizePath =
-        let cache = Dictionary<string, string>()
-        fun path ->
-            let mutable value = null
-            if cache.TryGetValue(path, &value) then value
-            else
-                let result = pathRemap path
-                cache.Add(path, result)
-                result
+    let normalizePath = Cache(fun path -> pathRemap path)
 
     ess.FileLines
-    |> Seq.groupBy (fun fl -> normalizePath fl.file)
+    |> Seq.groupBy (fun fl -> normalizePath.[fl.file])
     |> Seq.toArray
     |> Array.collect (fun (file, lines) -> getLineRangesForFile file lines mergeDistance)
 

@@ -2,7 +2,6 @@ namespace Symbols
 
 open System
 open System.Collections
-open System.Collections.Concurrent
 
 open Dia2Lib
 
@@ -22,9 +21,6 @@ module private DIA =
         else
             // Dummy expression to constrain return type to that of o.Item
             seq [| (^T: (member Item: _ -> _) (o, Unchecked.defaultof<_>)) |]
-
-    let inline toArray o =
-        Seq.toArray $ toSeq o
 
     // get section names from session
     let getSectionNames (session: IDiaSession) =
@@ -76,13 +72,12 @@ module private DIA =
 
     // get line information from file
     let getLines (session: IDiaSession) =
-        let pathCache = ConcurrentDictionary<uint32, string>()
-        let pathCacheGet = Func<_, _>(fun id -> session.findFileById(id).fileName)
+        let paths = Cache(fun id -> session.findFileById(id).fileName)
 
         toSeq $ session.findLinesByRVA(0u, ~~~0u)
         |> Seq.toArray
         |> Array.map (fun line ->
-            let path = pathCache.GetOrAdd(line.sourceFileId, pathCacheGet)
+            let path = paths.[line.sourceFileId]
 
             { address = uint64 line.relativeVirtualAddress
               size = uint64 line.length

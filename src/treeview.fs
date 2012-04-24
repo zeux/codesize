@@ -8,21 +8,15 @@ open System.Windows.Controls
 // group an array by equal string prefixes
 let private groupByPrefix data offset getPrefixLength =
     // group by first prefix
-    let groups = Dictionary<string, List<_>>()
+    let groups = Cache(fun prefix -> List<_>())
 
     for (_, text: string, _) as item in data do
         let prefix = text.Substring(offset, getPrefixLength text offset)
 
-        match groups.TryGetValue(prefix) with
-        | true, lst -> lst.Add(item)
-        | _ ->
-            let lst = List<_>()
-            lst.Add(item)
-            groups.Add(prefix, lst)
+        groups.[prefix].Add(item)
 
     // find largest prefix in each group
-    groups
-    |> Seq.toArray
+    groups.Pairs
     |> Array.map (fun p ->
         let prefix = p.Key
         let group = p.Value.ToArray()
