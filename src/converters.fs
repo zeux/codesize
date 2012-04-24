@@ -52,7 +52,7 @@ type TreeNodeHeader() =
 type TreeNodeItems() =
     inherit BaseConverter()
 
-    let dummy = [|null|]
+    let dummy = [|obj()|]
     let empty = [||]
 
     interface IMultiValueConverter with
