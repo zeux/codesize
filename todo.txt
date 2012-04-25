@@ -1,7 +1,5 @@
-first look fixes:
+fixes:
 - fix binutils parsing of dwarf decodedline for some elf files (addr2line works but objdump fails)
-- exception window
-- fix registration-free com :-/
 
 grouping details:
 - 'guard variable for', 'vtable for', 'non-virtual thunk to' are usually useful as suffixes - grouping option? (ideally need to xform symbol names here)
@@ -15,7 +13,7 @@ ui responsiveness:
 editor:
 - copy full path, open folder
 - add support for external editors (vs/vim/emacs/notepad++/...?)
-- internal editor can display size per line in an extra column?..
+- internal editor can display size per line in an extra column
 
 other features:
 - set/reset root for treeview
