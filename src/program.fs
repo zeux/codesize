@@ -20,10 +20,17 @@ module Program =
     let window = codesize.window
 
     app.DispatcherUnhandledException.Add(fun args ->
-        UI.Exception.showModal window args.Exception
+        let e = args.Exception
+        UI.Exception.uploadReportAsync e
+        UI.Exception.showModal window e
         args.Handled <- true)
 
     AppDomain.CurrentDomain.UnhandledException.Add(fun args ->
-        UI.Exception.showMessage (unbox args.ExceptionObject))
+        let e = unbox args.ExceptionObject
+        UI.Exception.uploadReportAsync e
+        UI.Exception.showMessage e)
+
+    app.Exit.Add(fun _ ->
+        UI.Exception.uploadReportWait 2000)
 
     app.Run(window) |> ignore

@@ -370,11 +370,17 @@ let rebindToViewAsync (ess: ISymbolSource) =
         | :? OperationCanceledException -> ()
     }
 
+let uploadException (e: exn) =
+    match UI.Settings.current.["SendUsageStatistics/IsChecked"].Value with
+    | :? bool as b when b -> UI.Exception.uploadReportAsync e
+    | _ -> ()
+
 let protectUI work =
     async {
         try do! work
         with e ->
             do! AsyncUI.switchToUI ()
+            uploadException e
             UI.Exception.showModal window e
     }
     

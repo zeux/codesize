@@ -3,7 +3,7 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        xmlns:ui="clr-namespace:UI;assembly=codesize"
-       Name="MainWindow" Title="codesize" Height="400" Width="890" ResizeMode="CanResizeWithGrip" ui:Window.AutoSavePlacement="True">
+       x:Name="MainWindow" Title="codesize" Height="420" Width="890" ResizeMode="CanResizeWithGrip" ui:Window.AutoSavePlacement="True">
     <Window.Resources>
         <Style x:Key="VisibleForSymbols" TargetType="FrameworkElement">
             <Setter Property="Visibility" Value="{Binding ElementName=DisplayDataSymbols, Path=IsSelected, Converter={ui:BoolToVisibility}}" />
@@ -131,8 +131,10 @@ You can start by loading a file that contains debug information for your applica
 (it's usually the PDB file for Microsoft toolchains and ELF file for binutils-based ones).
 <LineBreak /><LineBreak />
 Any issues or suggestions should be reported at
-<Hyperlink NavigateUri="http://hg.zeuxcg.org/codesize" ui:Hyperlink.NavigateToUri="True">http://hg.zeuxcg.org/codesize</Hyperlink>
+<Hyperlink NavigateUri="https://codesize.fogbugz.com/" ui:Hyperlink.NavigateToUri="True">https://codesize.fogbugz.com/</Hyperlink>
                     </TextBlock>
+                    <TextBlock />
+                    <CheckBox Name="SendUsageStatistics" Content="Send anonymous usage statistics" IsChecked="{ui:AutoSave true}" />
                 </StackPanel>
                 <DockPanel Grid.Column="1" Margin="4">
                     <TextBlock Text="Start" FontSize="14" DockPanel.Dock="Top" />
