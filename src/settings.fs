@@ -35,24 +35,12 @@ module private Win32 =
     [<DllImport("user32")>] extern bool GetWindowPlacement(nativeint handle, WINDOWPLACEMENT& placement)
 
 module Settings =
-    type Item() =
-        let mutable value = null
-        let event = Event<_, _>()
-
-        member this.Value
-            with get () = value
-             and set v =
-                value <- v
-                event.Trigger(this, PropertyChangedEventArgs("Value"))
-
-        interface INotifyPropertyChanged with
-            [<CLIEvent>]
-            member this.PropertyChanged = event.Publish
+    type Item = Cell<obj>
 
     type Group() =
         let data = ConcurrentDictionary<string, Item>()
 
-        member this.Item key = data.GetOrAdd(key, fun key -> Item())
+        member this.Item key = data.GetOrAdd(key, fun key -> Item null)
 
         member this.Load (path: string) =
             let doc = XmlDocument()
