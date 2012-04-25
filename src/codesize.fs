@@ -63,8 +63,6 @@ module controls =
     let contentsTree = window?ContentsTree :?> TreeView
     let contentsList = window?ContentsList :?> ListView
     let welcomePanel = window?WelcomePanel :?> Grid
-    let welcomeOpenLink = window?WelcomeOpenLink :?> Hyperlink
-    let welcomeRecentPanel = window?WelcomeRecentPanel :?> ItemsControl
 
 let getFilterTextFn typ (text: string) =
     let contains (s: string) (p: string) = s.IndexOf(p, StringComparison.InvariantCultureIgnoreCase) >= 0
@@ -577,11 +575,6 @@ let getOpenFileName () =
     else
         None
 
-controls.welcomeOpenLink.Click.Add(fun _ ->
-    match getOpenFileName () with
-    | Some path -> loadFile path
-    | None -> ())
-
 type RecentFile(path) =
     member this.FileName = Path.GetFileName(path)
     member this.Path = path
@@ -593,27 +586,22 @@ type RecentFile(path) =
         source.Freeze()
         source :> ImageSource
 
-    member this.LoadFile (sender: obj) (e: MouseButtonEventArgs) =
-        ()
-
-controls.welcomeRecentPanel.Loaded.Add(fun _ ->
-    let paths = getRecentFileList () |> Array.map (fun path -> RecentFile path)
-
-    controls.welcomeRecentPanel.ItemsSource <- paths)
-
 window.Loaded.Add(fun _ ->
     if Environment.GetCommandLineArgs().Length > 1 then
         loadFile $ Environment.GetCommandLineArgs().[1])
 
-let settingsPath = sprintf "%s\\codesize\\settings.xml" $ Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-
-if File.Exists(settingsPath) then try UI.Settings.current.Load settingsPath with _ -> ()
-window.Closed.Add(fun _ -> try UI.Settings.current.Save settingsPath with _ -> ())
-
 type MainWindow() =
     inherit Window()
 
-    member this.LoadFile (sender: obj) (e: MouseButtonEventArgs) =
+    member this.OpenFileDialog (sender: obj) (e: RoutedEventArgs) =
+        match getOpenFileName () with
+        | Some path -> loadFile path
+        | None -> ()
+
+    member this.RecentFiles =
+        getRecentFileList () |> Array.map (fun path -> RecentFile path)
+
+    member this.LoadRecentFile (sender: obj) (e: MouseButtonEventArgs) =
         match (sender :?> FrameworkElement).Tag with
         | :? RecentFile as f -> loadFile f.Path
         | _ -> ()

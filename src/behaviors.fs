@@ -66,3 +66,11 @@ type Method(name: string) =
             let tprop = target.TargetProperty :?> EventInfo
             box $ Delegate.CreateDelegate(tprop.EventHandlerType, root, name)
         | _ -> null
+
+type RootObject() =
+    inherit MarkupExtension()
+
+    override this.ProvideValue(sp) =
+        match sp.GetService(typeof<IRootObjectProvider>) with
+        | :? IRootObjectProvider as p -> p.RootObject
+        | _ -> null
