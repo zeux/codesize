@@ -2,10 +2,13 @@ namespace UI
 
 open System
 open System.Diagnostics
+open System.Reflection
 open System.Windows
 open System.Windows.Controls
 open System.Windows.Input
 open System.Windows.Navigation
+open System.Windows.Markup
+open System.Xaml
 
 type TextBox() =
     static let handler = 
@@ -47,3 +50,19 @@ type Hyperlink() =
                 element.RequestNavigate.RemoveHandler(handler)
 
             element.SetValue(navigateToUri, value)
+
+type Method(name: string) =
+    inherit MarkupExtension()
+
+    override this.ProvideValue(sp) =
+        let root =
+            match sp.GetService(typeof<IRootObjectProvider>) with
+            | :? IRootObjectProvider as p -> p.RootObject
+            | _ -> null
+
+        match sp.GetService(typeof<IProvideValueTarget>) with
+        | :? IProvideValueTarget as target ->
+            let tobj = target.TargetObject :?> DependencyObject
+            let tprop = target.TargetProperty :?> EventInfo
+            box $ Delegate.CreateDelegate(tprop.EventHandlerType, root, name)
+        | _ -> null

@@ -20,9 +20,6 @@ open Symbols
 let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Relative)) :?> Window
 let editor = lazy Editor.Window()
 
-type MainWindow() =
-    inherit Window()
-
 module controls =
     type DisplayData =
     | Symbols = 0
@@ -67,7 +64,7 @@ module controls =
     let contentsList = window?ContentsList :?> ListView
     let welcomePanel = window?WelcomePanel :?> Grid
     let welcomeOpenLink = window?WelcomeOpenLink :?> Hyperlink
-    let welcomeRecentPanel = window?WelcomeRecentPanel :?> StackPanel
+    let welcomeRecentPanel = window?WelcomeRecentPanel :?> ItemsControl
 
 let getFilterTextFn typ (text: string) =
     let contains (s: string) (p: string) = s.IndexOf(p, StringComparison.InvariantCultureIgnoreCase) >= 0
@@ -585,63 +582,24 @@ controls.welcomeOpenLink.Click.Add(fun _ ->
     | Some path -> loadFile path
     | None -> ())
 
+type RecentFile(path) =
+    member this.FileName = Path.GetFileName(path)
+    member this.Path = path
+
+    member this.Icon =
+        let ico = Icon.ExtractAssociatedIcon(path)
+        let options = Imaging.BitmapSizeOptions.FromEmptyOptions()
+        let source = Imaging.CreateBitmapSourceFromHIcon(ico.Handle, Int32Rect.Empty, options)
+        source.Freeze()
+        source :> ImageSource
+
+    member this.LoadFile (sender: obj) (e: MouseButtonEventArgs) =
+        ()
+
 controls.welcomeRecentPanel.Loaded.Add(fun _ ->
-    async {
-        let paths = getRecentFileList ()
+    let paths = getRecentFileList () |> Array.map (fun path -> RecentFile path)
 
-        do! AsyncUI.switchToUI ()
-
-        let icons =
-            paths
-            |> Array.map (fun path ->
-                let name = Path.GetFileName(path)
-
-                let line =
-                    StackPanel(
-                        Orientation = Orientation.Horizontal,
-                        ToolTip = path,
-                        HorizontalAlignment = HorizontalAlignment.Left)
-
-                line.Cursor <- Cursors.Hand
-
-                let tb =
-                    TextBlock( Text = name,
-                        Padding = Thickness(2.0, 2.0, 2.0, 2.0))
-
-                line.MouseDown.Add(fun _ -> loadFile path)
-
-                let icon = Image(Width = 16.0, Height = 16.0)
-
-                let updateLine () =
-                    line.Background <- if line.IsMouseOver then Brushes.Gainsboro else Brushes.Transparent
-                    tb.Foreground <- if line.IsMouseOver then Brushes.DodgerBlue else Brushes.Black
-
-                line.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
-                tb.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
-                icon.IsMouseDirectlyOverChanged.Add(fun _ -> updateLine ())
-
-                line.Children.Add(icon) |> ignore
-                line.Children.Add(tb) |> ignore
-
-                controls.welcomeRecentPanel.Children.Add(line) |> ignore
-
-                async {
-                    do! AsyncUI.switchToWork ()
-
-                    try
-                        use ico = Icon.ExtractAssociatedIcon(path)
-
-                        do! AsyncUI.switchToUI ()
-
-                        let options = Imaging.BitmapSizeOptions.FromEmptyOptions()
-                        let source = Imaging.CreateBitmapSourceFromHIcon(ico.Handle, Int32Rect.Empty, options)
-                        icon.Source <- source :> ImageSource
-                    with _ -> ()
-                })
-
-        for i in icons do
-            do! i
-    } |> Async.Start)
+    controls.welcomeRecentPanel.ItemsSource <- paths)
 
 window.Loaded.Add(fun _ ->
     if Environment.GetCommandLineArgs().Length > 1 then
@@ -651,3 +609,11 @@ let settingsPath = sprintf "%s\\codesize\\settings.xml" $ Environment.GetFolderP
 
 if File.Exists(settingsPath) then try UI.Settings.current.Load settingsPath with _ -> ()
 window.Closed.Add(fun _ -> try UI.Settings.current.Save settingsPath with _ -> ())
+
+type MainWindow() =
+    inherit Window()
+
+    member this.LoadFile (sender: obj) (e: MouseButtonEventArgs) =
+        match (sender :?> FrameworkElement).Tag with
+        | :? RecentFile as f -> loadFile f.Path
+        | _ -> ()

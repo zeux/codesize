@@ -153,7 +153,30 @@ Any issues or suggestions should be reported at
                     <TextBlock DockPanel.Dock="Top"/>
                     <TextBlock Text="Recent files" FontSize="14" DockPanel.Dock="Top"/>
                     <ScrollViewer Margin="2,0,0,0" VerticalScrollBarVisibility="Auto">
-                        <StackPanel Name="WelcomeRecentPanel">
+                        <StackPanel>
+                            <ItemsControl Name="WelcomeRecentPanel">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Cursor="Hand" MouseDown="{ui:Method LoadFile}">
+                                            <StackPanel.Style>
+                                                <Style>
+                                                    <Style.Triggers>
+                                                        <Trigger Property="ContentElement.IsMouseOver" Value="True">
+                                                            <Setter Property="StackPanel.Background" Value="Gainsboro" />
+                                                            <Setter Property="TextBlock.Foreground" Value="DodgerBlue" />
+                                                        </Trigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
+                                            <StackPanel.Tag>
+                                                <Binding />
+                                            </StackPanel.Tag>
+                                            <Image Width="16" Height="16" Source="{Binding Path=Icon, IsAsync=True}"/>
+                                            <TextBlock Text="{Binding Path=FileName}" Padding="2" Name="Text" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
