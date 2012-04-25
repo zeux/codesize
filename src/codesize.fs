@@ -575,15 +575,18 @@ let getOpenFileName () =
     else
         None
 
+let iconLoaderLock = obj()
+
 type RecentFile(path) =
     member this.FileName = Path.GetFileName(path)
     member this.Path = path
-
     member this.Icon =
-        let ico = Icon.ExtractAssociatedIcon(path)
+        use icon = lock iconLoaderLock (fun _ -> Icon.ExtractAssociatedIcon(path))
+
         let options = Imaging.BitmapSizeOptions.FromEmptyOptions()
-        let source = Imaging.CreateBitmapSourceFromHIcon(ico.Handle, Int32Rect.Empty, options)
+        let source = Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, options)
         source.Freeze()
+
         source :> ImageSource
 
 window.Loaded.Add(fun _ ->
