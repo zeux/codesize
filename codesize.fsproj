@@ -61,12 +61,17 @@
     <Compile Include="src\converters.fs" />
     <Compile Include="src\behaviors.fs" />
     <Compile Include="src\settings.fs" />
+    <Compile Include="src\exception.fs" />
     <Compile Include="src\codesize.fs" />
     <Resource Include="src\ui\mainwindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Resource>
     <Resource Include="src\ui\editor.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Resource>
+    <Resource Include="src\ui\exception.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Resource>

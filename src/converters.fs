@@ -65,3 +65,7 @@ type TreeNodeItems() =
 type BoolToVisibility() =
     inherit FnConverter<bool, Visibility>(fun item ->
         if item then Visibility.Visible else Visibility.Hidden)
+
+type TypeToString() =
+    inherit FnConverter<obj, string>(fun item ->
+        if item = null then "null" else item.GetType().ToString())

@@ -386,7 +386,7 @@ let protectUI work =
         try do! work
         with e ->
             do! AsyncUI.switchToUI ()
-            controls.labelStatus.Text <- e.Message
+            UI.Exception.showModal window e
     }
     
 let rebindToViewAgent = AsyncUI.SingleUpdateAgent()
@@ -647,5 +647,12 @@ controls.welcomeRecentPanel.Loaded.Add(fun _ ->
 window.Loaded.Add(fun _ ->
     if Environment.GetCommandLineArgs().Length > 1 then
         loadFile $ Environment.GetCommandLineArgs().[1])
+
+app.DispatcherUnhandledException.Add(fun args ->
+    UI.Exception.showModal window args.Exception
+    args.Handled <- true)
+
+AppDomain.CurrentDomain.UnhandledException.Add(fun args ->
+    UI.Exception.showMessage (unbox args.ExceptionObject))
 
 app.Run(window) |> ignore
