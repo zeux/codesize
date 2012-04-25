@@ -1,4 +1,4 @@
-module codesize.Program
+module codesize
 
 open System
 open System.Collections.Generic
@@ -17,17 +17,11 @@ open Microsoft.Win32
 
 open Symbols
 
-[<STAThread>] do ()
-
-let app = Application(ShutdownMode = ShutdownMode.OnMainWindowClose)
-
-let settingsPath = sprintf "%s\\codesize\\settings.xml" $ Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
-
-if File.Exists(settingsPath) then try UI.Settings.current.Load settingsPath with _ -> ()
-app.Exit.Add(fun _ -> try UI.Settings.current.Save settingsPath with _ -> ())
-
 let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Relative)) :?> Window
 let editor = lazy Editor.Window()
+
+type MainWindow() =
+    inherit Window()
 
 module controls =
     type DisplayData =
@@ -653,11 +647,7 @@ window.Loaded.Add(fun _ ->
     if Environment.GetCommandLineArgs().Length > 1 then
         loadFile $ Environment.GetCommandLineArgs().[1])
 
-app.DispatcherUnhandledException.Add(fun args ->
-    UI.Exception.showModal window args.Exception
-    args.Handled <- true)
+let settingsPath = sprintf "%s\\codesize\\settings.xml" $ Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
 
-AppDomain.CurrentDomain.UnhandledException.Add(fun args ->
-    UI.Exception.showMessage (unbox args.ExceptionObject))
-
-app.Run(window) |> ignore
+if File.Exists(settingsPath) then try UI.Settings.current.Load settingsPath with _ -> ()
+window.Closed.Add(fun _ -> try UI.Settings.current.Save settingsPath with _ -> ())

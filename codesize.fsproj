@@ -63,6 +63,7 @@
     <Compile Include="src\settings.fs" />
     <Compile Include="src\exception.fs" />
     <Compile Include="src\codesize.fs" />
+    <Compile Include="src\program.fs" />
     <Resource Include="src\ui\mainwindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
