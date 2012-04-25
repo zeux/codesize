@@ -564,13 +564,18 @@ let loadFile path =
     controls.labelLoading.Text <- sprintf "Loading %s..." path
 
     protectUI $ async {
-        let ess = getSymbolSource path
-        do! bindToViewAsync ess
-        window.IsEnabled <- true
-        controls.panelLoading.Visibility <- Visibility.Hidden
+        try
+            let ess = getSymbolSource path
+            do! bindToViewAsync ess
 
-        controls.welcomePanel.Visibility <- Visibility.Hidden
-        updateRecentFileList path
+            controls.welcomePanel.Visibility <- Visibility.Hidden
+            updateRecentFileList path
+        finally
+            async {
+                do! AsyncUI.switchToUI ()
+                window.IsEnabled <- true
+                controls.panelLoading.Visibility <- Visibility.Hidden
+            } |> Async.Start
     } |> Async.Start
 
 let getOpenFileName () =
