@@ -14,8 +14,13 @@ module Program =
 
     let settingsPath = sprintf "%s\\codesize\\settings.xml" $ Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)
 
-    if File.Exists(settingsPath) then try UI.Settings.current.Load settingsPath with _ -> ()
-    app.Exit.Add(fun _ -> try UI.Settings.current.Save settingsPath with _ -> ())
+    if File.Exists(settingsPath) then
+        try UI.Settings.current.Load settingsPath
+        with _ -> ()
+
+    app.Exit.Add(fun _ ->
+        try UI.Settings.current.Save settingsPath
+        with :? IOException -> ())
 
     let window = codesize.window
 

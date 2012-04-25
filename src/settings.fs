@@ -59,11 +59,12 @@ module Settings =
             data.ToArray()
             |> Array.map (fun p -> p.Key, p.Value.Value)
             |> Array.iter (fun (name, value) ->
-                let item = doc.CreateElement("item")
-                item.SetAttribute("name", name)
-                item.SetAttribute("type", value.GetType().AssemblyQualifiedName)
-                item.SetAttribute("value", TypeDescriptor.GetConverter(value).ConvertToInvariantString(value))
-                root.AppendChild(item) |> ignore)
+                if value <> null then
+                    let item = doc.CreateElement("item")
+                    item.SetAttribute("name", name)
+                    item.SetAttribute("type", value.GetType().AssemblyQualifiedName)
+                    item.SetAttribute("value", TypeDescriptor.GetConverter(value).ConvertToInvariantString(value))
+                    root.AppendChild(item) |> ignore)
 
             Directory.CreateDirectory(Path.GetDirectoryName(path)) |> ignore
             doc.Save(path)
