@@ -405,7 +405,7 @@ int iovecStat(struct bfd *abfd, void *stream, struct stat *sb)
     return 0;
 }
 
-BuFile* buFileOpen(const char* path, int offset)
+BuFile* buFileOpen(const char* path, bool preload, int offset)
 {
     iovecStreamParams p = {path, offset};
 

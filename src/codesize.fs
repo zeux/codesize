@@ -63,6 +63,7 @@ module controls =
     let contentsTree = window?ContentsTree :?> TreeView
     let contentsList = window?ContentsList :?> ListView
     let welcomePanel = window?WelcomePanel :?> Grid
+    let preloadFiles = window?PreloadFiles :?> CheckBox
 
 let getFilterTextFn typ (text: string) =
     let contains (s: string) (p: string) = s.IndexOf(p, StringComparison.InvariantCultureIgnoreCase) >= 0
@@ -524,14 +525,14 @@ let bindToViewAsync (ess: ISymbolSource) =
         do! rebindToViewAsync ess
     }
 
-let getSymbolSource path =
+let getSymbolSource path preload =
     match Path.GetExtension(path).ToLower() with
     | ".elf" ->
-        ElfSymbolSource(path) :> ISymbolSource
+        ElfSymbolSource(path, preload) :> ISymbolSource
     | ".self" ->
-        SelfSymbolSource(path) :> ISymbolSource
+        SelfSymbolSource(path, preload) :> ISymbolSource
     | ".pdb" ->
-        PdbSymbolSource(path) :> ISymbolSource
+        PdbSymbolSource(path, preload) :> ISymbolSource
     | e ->
         failwithf "Unknown extension %s" e
 
@@ -557,10 +558,11 @@ let loadFile path =
     window.Title <- sprintf "%s - %s" window.Title path
     controls.panelLoading.Visibility <- Visibility.Visible
     controls.labelLoading.Text <- sprintf "Loading %s..." path
+    let preload = controls.preloadFiles.IsChecked.Value
 
     protectUI $ async {
         try
-            let ess = getSymbolSource path
+            let ess = getSymbolSource path preload
             do! bindToViewAsync ess
 
             controls.welcomePanel.Visibility <- Visibility.Hidden

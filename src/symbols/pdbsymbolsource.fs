@@ -2,12 +2,16 @@ namespace Symbols
 
 open Dia2Lib
 
-type PdbSymbolSource(path) =
+type PdbSymbolSource(path, preload) =
     let source = DiaSymbolSource.CreateSource ()
 
     do
-        DiaMemoryStream.PrefetchFile(path)
-        source.loadDataFromPdb(path)
+        if preload then
+            let stream = DiaMemoryStream(path)
+            source.loadDataFromIStream(stream)
+        else
+            DiaMemoryStream.PrefetchFile(path)
+            source.loadDataFromPdb(path)
 
     let ss = DiaSymbolSource(source) :> ISymbolSource
 

@@ -7,7 +7,7 @@
 
 struct BuFile;
 
-API BuFile* buFileOpen(const char* path, int offset);
+API BuFile* buFileOpen(const char* path, bool preload, int offset);
 API void buFileClose(BuFile* file);
 
 struct BuSymtab;
