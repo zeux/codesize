@@ -348,16 +348,18 @@ struct BuLinetab
 struct iovecStreamParams
 {
     const char* filename;
+    bool preload;
     int offset;
 };
 
 struct iovecStream
 {
     FILE* fd;
+    void* contents;
     int offset;
     struct stat fstat;
 
-    iovecStream(FILE* fd, int offset, struct stat fstat): fd(fd), offset(offset), fstat(fstat)
+    iovecStream(FILE* fd, void* contents, int offset, struct stat fstat): fd(fd), contents(contents), offset(offset), fstat(fstat)
     {
     }
 };
@@ -375,23 +377,55 @@ void* iovecOpen(struct bfd *nbfd, void *open_closure)
     FILE* fd = fopen(p->filename, "rb");
     if (!fd) return 0;
 
-    return new iovecStream(fd, p->offset, fstat);
+    void* contents = 0;
+
+    if (p->preload)
+    {
+        contents = malloc(fstat.st_size);
+
+        if (contents)
+        {
+            fseek(fd, p->offset, SEEK_SET);
+            fread(contents, 1, fstat.st_size, fd);
+
+            fclose(fd);
+            fd = 0;
+        }
+    }
+
+    return new iovecStream(fd, contents, p->offset, fstat);
 }
 
 file_ptr iovecRead(struct bfd *nbfd, void *stream, void *buf, file_ptr nbytes, file_ptr offset)
 {
     iovecStream* s = static_cast<iovecStream*>(stream);
 
-    fseeko64(s->fd, offset + s->offset, SEEK_SET);
+    if (s->fd)
+    {
+        fseeko64(s->fd, offset + s->offset, SEEK_SET);
 
-    return fread(buf, 1, nbytes, s->fd);
+        return fread(buf, 1, nbytes, s->fd);
+    }
+    else
+    {
+        file_ptr size = s->fstat.st_size;
+        if (offset >= size) return 0;
+
+        file_ptr result = (size - offset < nbytes) ? (size - offset) : nbytes;
+
+        memcpy(buf, static_cast<bfd_byte*>(s->contents) + offset, result);
+
+        return result;
+    }
 }
 
 int iovecClose(struct bfd *nbfd, void *stream)
 {
     iovecStream* s = static_cast<iovecStream*>(stream);
 
-    fclose(s->fd);
+    if (s->fd) fclose(s->fd);
+    free(s->contents);
+
     delete s;
 
     return 0;
@@ -407,7 +441,7 @@ int iovecStat(struct bfd *abfd, void *stream, struct stat *sb)
 
 BuFile* buFileOpen(const char* path, bool preload, int offset)
 {
-    iovecStreamParams p = {path, offset};
+    iovecStreamParams p = {path, preload, offset};
 
     // open file
     std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> abfd(bfd_openr_iovec(path, 0, iovecOpen, &p, iovecRead, iovecClose, iovecStat), bfd_close);
