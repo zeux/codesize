@@ -1,6 +1,3 @@
-fixes:
-- fix binutils parsing of dwarf decodedline for some elf files (addr2line works but objdump fails)
-
 grouping details:
 - 'guard variable for', 'vtable for', 'non-virtual thunk to' are usually useful as suffixes - grouping option? (ideally need to xform symbol names here)
 - even if word prefix is selected, it may make sense to complete prefix names letter by letter? (i.e. D3DCreateDevice vs D3DXCreateTexture)
@@ -18,5 +15,5 @@ editor:
 other features:
 - set/reset root for treeview
 - better extension support (pyd/mll) & filters
-- open another file from within the same process
+- open another file from within the same process (+ "file has changed, reload?" popup panel)
 - diff between two files (need to figure out sorting criteria and to ensure that we don't keep two full datasets in memory)
