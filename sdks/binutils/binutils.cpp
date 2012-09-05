@@ -15,7 +15,8 @@
 #include <objbase.h>
 
 #include <bfd.h>
-#include "bfdext.h"
+#include <demangle.h>
+#include <elf-bfd.h>
 
 #include "binutils.h"
 #include "decodedline.h"

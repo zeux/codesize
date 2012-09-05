@@ -8,3 +8,6 @@ syntax:regexp
 
 # visual studio user settings
 ^[^/]*\.user$
+
+# binutils
+^sdks/binutils/binutils-
