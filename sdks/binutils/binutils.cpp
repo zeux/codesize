@@ -43,6 +43,21 @@ std::vector<asymbol*> slurpSymtab(bfd* abfd)
     return std::move(res);
 }
 
+std::vector<asymbol*> slurpDynamicSymtab(bfd* abfd)
+{
+    long storage_needed = bfd_get_dynamic_symtab_upper_bound (abfd);
+
+    std::vector<asymbol*> res(storage_needed);
+
+    if (storage_needed)
+    {
+        long symcount = bfd_canonicalize_dynamic_symtab (abfd, &res[0]);
+        res.resize(symcount);
+    }
+
+    return std::move(res);
+}
+
 struct BuSymbolOwn: BuSymbol
 {
     std::unique_ptr<char, void (*)(void*)> namestorage;
@@ -219,9 +234,8 @@ std::vector<asymbol*> getSymbolsSortedFiltered(bfd* abfd, asymbol** symtab, size
     for (size_t i = 0; i < symcount; ++i)
     {
         asymbol* sym = symtab[i];
-        assert(sym);
 
-        if (keepSymbol(abfd, sym))
+        if (sym && keepSymbol(abfd, sym))
             result.push_back(sym);
     }
 
@@ -468,6 +482,10 @@ BuFile* buFileOpen(const char* path, bool preload, int offset)
 
     // slurp symtab since all operations need it anyway
     std::vector<asymbol*> symtab = slurpSymtab(abfd.get());
+    std::vector<asymbol*> dyntab = slurpDynamicSymtab(abfd.get());
+
+    symtab.insert(symtab.end(), dyntab.begin(), dyntab.end());
+    symtab.push_back(0);
 
     return new BuFile(std::move(abfd), std::move(symtab));
 }
