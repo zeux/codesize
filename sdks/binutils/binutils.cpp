@@ -184,7 +184,7 @@ char* getDemangledName(bfd* abfd, const char* name)
 bool keepSymbol(bfd* abfd, asymbol* sym)
 {
     if (sym->flags & BSF_DEBUGGING) return false;
-	if (bfd_is_target_special_symbol(abfd, sym)) return false;
+    if (bfd_is_target_special_symbol(abfd, sym)) return false;
     if (strncmp(bfd_asymbol_name(sym), ".LANCHOR", 8) == 0) return false;
 
     return true;
@@ -444,10 +444,24 @@ BuFile* buFileOpen(const char* path, bool preload, int offset)
 {
     iovecStreamParams p = {path, preload, offset};
 
+    // set default target; without a default target some logic inside bfd goes horribly wrong
+    bfd_set_default_target("binary");
+
     // open file
     std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> abfd(bfd_openr_iovec(path, 0, iovecOpen, &p, iovecRead, iovecClose, iovecStat), bfd_close);
     if (!abfd) return 0;
-    if (!bfd_check_format(abfd.get(), bfd_object)) return 0;
+
+    // choose a target
+    char** targets = 0;
+
+    if (!bfd_check_format_matches(abfd.get(), bfd_object, &targets))
+    {
+        // try to pick the first target in case of ambiguity
+        if (targets) bfd_find_target(targets[0], abfd.get());
+
+        // confirm that selected target worked
+        if (!bfd_check_format(abfd.get(), bfd_object)) return 0;
+    }
 
     // decompress sections (we don't know if we'll need it)
     abfd->flags |= BFD_DECOMPRESS;
