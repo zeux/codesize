@@ -4,6 +4,45 @@
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        xmlns:ui="clr-namespace:UI;assembly=codesize"
        x:Name="MainWindow" Title="codesize" Height="480" Width="890" ResizeMode="CanResizeWithGrip" ui:Window.AutoSavePlacement="True">
+    <Window.Resources>
+        <Style x:Key="TabItemCloseButtonStyle" TargetType="{x:Type Button}">
+           <Setter Property="Margin" Value="4,0,-4,0" />
+           <Setter Property="Width" Value="14" />
+           <Setter Property="Height" Value="14" />
+           <Setter Property="Focusable" Value="False" />
+           <Setter Property="OverridesDefaultStyle" Value="true" />
+           <Setter Property="Template">
+              <Setter.Value>
+                 <ControlTemplate TargetType="{x:Type Button}">
+                    <Grid>
+                        <Path x:Name="ButtonPathHover" Fill="Transparent">
+                            <Path.Data>
+                                <EllipseGeometry RadiusX="7" RadiusY="7" Center="7,7" />
+                            </Path.Data>
+                        </Path>
+                        <Path x:Name="ButtonPathNormal" Stroke="LightGray" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                            <Path.Data>
+                                M4,4 L10,10 M4,10 L10,4
+                            </Path.Data>
+                        </Path>
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                       <Trigger Property="IsMouseOver" Value="true">
+                          <Setter TargetName="ButtonPathHover" Property="Fill" Value="#FFB74A4A" />
+                          <Setter TargetName="ButtonPathNormal" Property="Stroke" Value="White" />
+                       </Trigger>
+                       <Trigger Property="IsEnabled" Value="false">
+                          <Setter Property="Visibility" Value="Collapsed" />
+                       </Trigger>
+                       <Trigger Property="IsPressed" Value="true">
+                          <Setter TargetName="ButtonPathHover" Property="Fill" Value="DarkGray" />
+                       </Trigger>
+                    </ControlTemplate.Triggers>
+                 </ControlTemplate>
+              </Setter.Value>
+           </Setter>
+        </Style>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />

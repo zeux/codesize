@@ -64,7 +64,13 @@ let loadFile path =
     let preload = gcontrols.preloadFiles.IsChecked.Value
 
     let tabcontent = Application.LoadComponent(Uri("src/ui/session.xaml", UriKind.Relative)) :?> UserControl
-    let tab = TabItem(Header = path, Content = tabcontent)
+    let tabheader = StackPanel(Orientation = Orientation.Horizontal)
+    let tabclose = Button()
+    tabclose.Style <- window.Resources.["TabItemCloseButtonStyle"] :?> Style
+    tabheader.Children.Add(TextBlock(Text = path)) |> ignore
+    tabheader.Children.Add(tabclose) |> ignore
+
+    let tab = TabItem(Header = tabheader, Content = tabcontent)
 
     let controls: UI.Session.Controls =
         { displayData = tabcontent?DisplayData :?> ComboBox 
@@ -88,6 +94,9 @@ let loadFile path =
         }
 
     gcontrols.sessions.Items.Add(tab) |> ignore
+    tabclose.Click.Add(fun _ ->
+        gcontrols.sessions.Items.Remove(tab))
+
     tab.IsSelected <- true
 
     protectUI $ async {
