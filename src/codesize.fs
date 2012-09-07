@@ -1,18 +1,16 @@
 module codesize
 
 open System
-open System.Collections.Generic
 open System.Drawing
+open System.Drawing.Imaging
 open System.IO
-open System.Text
-open System.Text.RegularExpressions
 open System.Windows
 open System.Windows.Controls
-open System.Windows.Data
 open System.Windows.Documents
 open System.Windows.Input
 open System.Windows.Interop
 open System.Windows.Media
+open System.Windows.Media.Imaging
 open Microsoft.Win32
 
 open Symbols
@@ -120,7 +118,7 @@ type RecentFile(path) =
     member this.Icon =
         use icon = lock iconLoaderLock (fun _ -> Icon.ExtractAssociatedIcon(path))
 
-        let options = Imaging.BitmapSizeOptions.FromEmptyOptions()
+        let options = BitmapSizeOptions.FromEmptyOptions()
         let source = Imaging.CreateBitmapSourceFromHIcon(icon.Handle, Int32Rect.Empty, options)
         source.Freeze()
 
