@@ -32,13 +32,12 @@ std::vector<asymbol*> slurpSymtab(bfd* abfd)
 {
     long storage_needed = bfd_get_symtab_upper_bound (abfd);
 
+    if (storage_needed <= 0) return std::vector<asymbol*>();
+
     std::vector<asymbol*> res(storage_needed);
 
-    if (storage_needed)
-    {
-        long symcount = bfd_canonicalize_symtab (abfd, &res[0]);
-        res.resize(symcount);
-    }
+    long symcount = bfd_canonicalize_symtab (abfd, &res[0]);
+    res.resize(symcount);
 
     return std::move(res);
 }
@@ -47,13 +46,12 @@ std::vector<asymbol*> slurpDynamicSymtab(bfd* abfd)
 {
     long storage_needed = bfd_get_dynamic_symtab_upper_bound (abfd);
 
+    if (storage_needed <= 0) return std::vector<asymbol*>();
+
     std::vector<asymbol*> res(storage_needed);
 
-    if (storage_needed)
-    {
-        long symcount = bfd_canonicalize_dynamic_symtab (abfd, &res[0]);
-        res.resize(symcount);
-    }
+    long symcount = bfd_canonicalize_dynamic_symtab (abfd, &res[0]);
+    res.resize(symcount);
 
     return std::move(res);
 }

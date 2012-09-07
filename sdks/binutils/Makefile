@@ -3,6 +3,7 @@ BUVER=binutils-2.22.90
 BUILD=$(BUVER)-build
 
 CFLAGS=-O3 -m32 -Wall -Wextra -I$(BUVER)/include -I$(BUVER)/bfd -I$(BUILD) -DDEBUGDIR=\"\"
+LDFLAGS=-static-libgcc -shared -liberty -lole32 -Wl,--kill-at -s
 
 HEADERS=
 HEADERS+=$(BUILD)/bfd.h
@@ -368,7 +369,7 @@ OBJECTS=$(SOURCES:%=$(BUILD)/%.o)
 all: binutils.dll
 
 binutils.dll: binutils.cpp decodedline.cpp $(BUILD)/libbfd.a
-	$(MINGW)\g++ $(CFLAGS) -I$(BUVER)/binutils -std=c++0x $^ -static-libgcc -shared -liberty -lole32 -Wl,--kill-at -s -o $@
+	$(MINGW)\g++ $(CFLAGS) -I$(BUVER)/binutils -std=c++0x $^ $(LDFLAGS) -o $@
 
 $(BUILD)/libbfd.a: $(OBJECTS)
 	del /q $(subst /,\,$@)
