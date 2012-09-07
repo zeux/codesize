@@ -22,12 +22,10 @@ module Program =
         try UI.Settings.current.Save settingsPath
         with :? IOException -> ())
 
-    let window = codesize.window
-
     app.DispatcherUnhandledException.Add(fun args ->
         let e = args.Exception
         UI.Exception.uploadReportAsync e
-        UI.Exception.showModal window e
+        UI.Exception.showModal e
         args.Handled <- true)
 
     AppDomain.CurrentDomain.UnhandledException.Add(fun args ->
@@ -38,4 +36,4 @@ module Program =
     app.Exit.Add(fun _ ->
         UI.Exception.uploadReportWait 2000)
 
-    app.Run(window) |> ignore
+    app.Run(codesize.window) |> ignore

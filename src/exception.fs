@@ -6,12 +6,12 @@ open System.Net
 open System.Windows
 open System.Windows.Controls
 
-let showModal owner (e: exn) =
+let showModal (e: exn) =
     let window = Application.LoadComponent(Uri("src/ui/exception.xaml", UriKind.Relative)) :?> Window
     let buttonCopy = window?ButtonCopy :?> Button
     let buttonClose = window?ButtonClose :?> Button
 
-    window.Owner <- owner
+    window.Owner <- Application.Current.MainWindow
     window.Tag <- e
 
     buttonCopy.Click.Add(fun _ ->
@@ -59,3 +59,17 @@ let uploadReportAsync (e: exn) =
 let uploadReportWait timeout =
     try reportUploader.PostAndReply((fun ch -> box ch), timeout)
     with :? TimeoutException -> ()
+
+let uploadException (e: exn) =
+    match UI.Settings.current.["SendUsageStatistics/IsChecked"].Value with
+    | :? bool as b when b -> uploadReportAsync e
+    | _ -> ()
+
+let protect work =
+    async {
+        try do! work
+        with e ->
+            do! AsyncUI.switchToUI ()
+            uploadException e
+            showModal e
+    }

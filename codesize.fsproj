@@ -62,6 +62,7 @@
     <Compile Include="src\behaviors.fs" />
     <Compile Include="src\settings.fs" />
     <Compile Include="src\exception.fs" />
+    <Compile Include="src\session.fs" />
     <Compile Include="src\codesize.fs" />
     <Compile Include="src\program.fs" />
     <Resource Include="src\ui\mainwindow.xaml">
