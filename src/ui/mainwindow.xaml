@@ -4,256 +4,95 @@
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        xmlns:ui="clr-namespace:UI;assembly=codesize"
        x:Name="MainWindow" Title="codesize" Height="480" Width="890" ResizeMode="CanResizeWithGrip" ui:Window.AutoSavePlacement="True">
-    <Window.Resources>
-        <Style x:Key="VisibleForSymbols" TargetType="FrameworkElement">
-            <Setter Property="Visibility" Value="{Binding ElementName=DisplayDataSymbols, Path=IsSelected, Converter={ui:BoolToVisibility}}" />
-        </Style>
-        <Style x:Key="VisibleForFiles" TargetType="FrameworkElement">
-            <Setter Property="Visibility" Value="{Binding ElementName=DisplayDataFiles, Path=IsSelected, Converter={ui:BoolToVisibility}}" />
-        </Style>
-    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal" Grid.Row="0">
-            <GroupBox Header="Display" HorizontalAlignment="Left" Height="80" Margin="4,4,4,0" VerticalAlignment="Top" Padding="4" Width="130">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+        <TabControl Name="Sessions">
+            <TabItem Header="Start">
+                <Grid Grid.Row="0">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="250" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Data:" Grid.Row="0" Grid.Column="0"/>
-                    <ComboBox Name="DisplayData" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}" Grid.Row="0" Grid.Column="1">
-                        <ComboBoxItem Name="DisplayDataSymbols" Content="Symbols"/>
-                        <ComboBoxItem Name="DisplayDataFiles" Content="Files"/>
-                    </ComboBox>
-                    <TextBlock Text="View:" Grid.Row="1" Grid.Column="0"/>
-                    <ComboBox Name="DisplayView" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}" Grid.Row="1" Grid.Column="1">
-                        <ComboBoxItem Content="Tree"/>
-                        <ComboBoxItem Content="List"/>
-                    </ComboBox>
-                </Grid>
-            </GroupBox>
-            <GroupBox Header="Filter" HorizontalAlignment="Left" Margin="4,4,4,4" VerticalAlignment="Top" Padding="4">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Name:" Grid.Row="0" Grid.Column="0"/>
-                    <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1">
-                        <TextBox Name="FilterText" Height="21" Margin="4,0,0,4" TextWrapping="Wrap" VerticalAlignment="Top" HorizontalAlignment="Left" Width="176" />
-                        <ComboBox Name="FilterTextType" HorizontalAlignment="Right" Height="21" Margin="4,0,0,0" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}">
-                            <ComboBoxItem Content="Words"/>
-                            <ComboBoxItem Content="Phrase"/>
-                            <ComboBoxItem Content="Regex"/>
-                        </ComboBox>
+                    <StackPanel Grid.Column="0" Margin="4">
+                        <TextBlock Text="Welcome" FontSize="14" />
+                        <TextBlock />
+                        <TextBlock TextWrapping="Wrap">
+    codesize is a tool that can help you find redundant or excessive code in your application.
+    <LineBreak /><LineBreak />
+    You can start by loading a file that contains debug information for your application
+    (it's usually the PDB file for Microsoft toolchains and ELF file for binutils-based ones).
+    <LineBreak /><LineBreak />
+    Any issues or suggestions should be reported at
+    <Hyperlink NavigateUri="https://codesize.fogbugz.com/" ui:Hyperlink.NavigateToUri="True">https://codesize.fogbugz.com/</Hyperlink>
+    <LineBreak/><LineBreak/>
+    New versions can be downloaded at
+    <Hyperlink NavigateUri="http://hg.zeuxcg.org/codesize/downloads" ui:Hyperlink.NavigateToUri="True">http://hg.zeuxcg.org/codesize/downloads/</Hyperlink>
+                        </TextBlock>
                     </StackPanel>
-                    <TextBlock Text="Sections:" Grid.Row="1" Grid.Column="0"/>
-                    <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1">
-                        <ComboBox Name="FilterSections" Height="21" Margin="4,0" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="2" Grid.Column="1" Width="122" />
-                        <TextBlock Text="Size: >= " Margin="4,0,0,0" />
-                        <TextBox Name="FilterSize" Height="21" Margin="0,0,0,4" TextWrapping="Wrap" VerticalAlignment="Top" Width="60" Text="0" />
-                    </StackPanel>
+                    <DockPanel Grid.Column="1" Margin="4">
+                        <TextBlock Text="Start" FontSize="14" DockPanel.Dock="Top" />
+                        <TextBlock Margin="4,2,0,0" DockPanel.Dock="Top">
+                            <Hyperlink Click="{ui:Method OpenFileDialog}">
+                                <Hyperlink.Style>
+                                    <Style>
+                                        <Style.Triggers>
+                                            <Trigger Property="Hyperlink.IsMouseOver" Value="False">
+                                                <Setter Property="TextBlock.TextDecorations" Value="{x:Null}" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Hyperlink.Style>
+                                Open file...
+                            </Hyperlink>
+                        </TextBlock>
+                        <TextBlock DockPanel.Dock="Top"/>
+                        <TextBlock Text="Settings" FontSize="14" DockPanel.Dock="Top"/>
+                        <CheckBox Name="PreloadFiles" IsChecked="{ui:AutoSave true}" Content="Load files in memory" DockPanel.Dock="Top" Margin="4,2,0,0"/>
+                        <CheckBox Name="SendUsageStatistics" Content="Send anonymous usage statistics" IsChecked="{ui:AutoSave true}" DockPanel.Dock="Top" Margin="4,2,0,0" />
+                        <TextBlock DockPanel.Dock="Top"/>
+                        <TextBlock Text="Recent files" FontSize="14" DockPanel.Dock="Top"/>
+                        <ScrollViewer Margin="2,0,0,0" VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <ItemsControl ItemsSource="{Binding Source={ui:RootObject}, Path=RecentFiles}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Cursor="Hand" MouseDown="{ui:Method LoadRecentFile}">
+                                                <StackPanel.Style>
+                                                    <Style>
+                                                        <Style.Triggers>
+                                                            <Trigger Property="ContentElement.IsMouseOver" Value="True">
+                                                                <Setter Property="StackPanel.Background" Value="Gainsboro" />
+                                                                <Setter Property="TextBlock.Foreground" Value="DodgerBlue" />
+                                                            </Trigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+                                                <StackPanel.Tag>
+                                                    <Binding />
+                                                </StackPanel.Tag>
+                                                <Image Width="16" Height="16" Source="{Binding Path=Icon, IsAsync=True}"/>
+                                                <TextBlock Text="{Binding Path=FileName}" Padding="2" Name="Text" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </DockPanel>
                 </Grid>
-            </GroupBox>
-            <GroupBox Header="Grouping" HorizontalAlignment="Left" Height="80" Margin="4,4,4,0" VerticalAlignment="Top" Width="200" Padding="4">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Prefix:" Grid.Row="0" Grid.Column="0"/>
-                    <ComboBox Name="GroupPrefix" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 1}" Grid.Row="0" Grid.Column="1">
-                        <ComboBoxItem Content="Letter"/>
-                        <ComboBoxItem Content="Word"/>
-                    </ComboBox>
-                    <TextBlock Text="Templates:" Grid.Row="1" Grid.Column="0" Style="{StaticResource VisibleForSymbols}" />
-                    <ComboBox Name="GroupTemplates" HorizontalAlignment="Stretch" Height="21" Margin="4,0,4,4" VerticalAlignment="Top" SelectedIndex="{ui:AutoSave 0}" Grid.Row="1" Grid.Column="1" Style="{StaticResource VisibleForSymbols}">
-                        <ComboBoxItem Content="None"/>
-                        <ComboBoxItem Content="Merge all"/>
-                        <ComboBoxItem Content="Merge incompatible"/>
-                    </ComboBox>
-                    <TextBlock Text="Line merge:" Grid.Row="1" Grid.Column="0" Style="{StaticResource VisibleForFiles}" />
-                    <TextBox Name="GroupLineMerge" Height="21" Margin="4,0,4,4" Grid.Row="1" Grid.Column="1" Text="{ui:AutoSave 1}" Style="{StaticResource VisibleForFiles}" />
-                </Grid>
-            </GroupBox>
-            <GroupBox Header="Path remapping" HorizontalAlignment="Left" Height="80" Margin="4,4,4,0" VerticalAlignment="Top" Width="200" Padding="4">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Source:" Grid.Row="0" Grid.Column="0"/>
-                    <TextBox Name="PathRemapSource" Height="21" Margin="4,0,4,4" Grid.Row="0" Grid.Column="1" Text="{ui:AutoSave}" />
-                    <TextBlock Text="Target:" Grid.Row="1" Grid.Column="0" />
-                    <TextBox Name="PathRemapTarget" Height="21" Margin="4,0,4,4" Grid.Row="1" Grid.Column="1" Text="{ui:AutoSave}" />
-                </Grid>
-            </GroupBox>
-        </StackPanel>
-        <Grid Row="1">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*" />
-                <RowDefinition Height="20" />
-                <RowDefinition Name="SymbolPanelRow" Height="{ui:AutoSave 70}" />
-            </Grid.RowDefinitions>
-            <Grid Name="WelcomePanel" Grid.Row="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="250" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Margin="4">
-                    <TextBlock Text="Welcome" FontSize="14" />
-                    <TextBlock />
-                    <TextBlock TextWrapping="Wrap">
-codesize is a tool that can help you find redundant or excessive code in your application.
-<LineBreak /><LineBreak />
-You can start by loading a file that contains debug information for your application
-(it's usually the PDB file for Microsoft toolchains and ELF file for binutils-based ones).
-<LineBreak /><LineBreak />
-Any issues or suggestions should be reported at
-<Hyperlink NavigateUri="https://codesize.fogbugz.com/" ui:Hyperlink.NavigateToUri="True">https://codesize.fogbugz.com/</Hyperlink>
-<LineBreak/><LineBreak/>
-New versions can be downloaded at
-<Hyperlink NavigateUri="http://hg.zeuxcg.org/codesize/downloads" ui:Hyperlink.NavigateToUri="True">http://hg.zeuxcg.org/codesize/downloads/</Hyperlink>
-                    </TextBlock>
-                </StackPanel>
-                <DockPanel Grid.Column="1" Margin="4">
-                    <TextBlock Text="Start" FontSize="14" DockPanel.Dock="Top" />
-                    <TextBlock Margin="4,2,0,0" DockPanel.Dock="Top">
-                        <Hyperlink Click="{ui:Method OpenFileDialog}">
-                            <Hyperlink.Style>
-                                <Style>
-                                    <Style.Triggers>
-                                        <Trigger Property="Hyperlink.IsMouseOver" Value="False">
-                                            <Setter Property="TextBlock.TextDecorations" Value="{x:Null}" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Hyperlink.Style>
-                            Open file...
-                        </Hyperlink>
-                    </TextBlock>
-                    <TextBlock DockPanel.Dock="Top"/>
-                    <TextBlock Text="Settings" FontSize="14" DockPanel.Dock="Top"/>
-                    <CheckBox Name="PreloadFiles" IsChecked="{ui:AutoSave true}" Content="Load files in memory" DockPanel.Dock="Top" Margin="4,2,0,0"/>
-                    <CheckBox Name="SendUsageStatistics" Content="Send anonymous usage statistics" IsChecked="{ui:AutoSave true}" DockPanel.Dock="Top" Margin="4,2,0,0" />
-                    <TextBlock DockPanel.Dock="Top"/>
-                    <TextBlock Text="Recent files" FontSize="14" DockPanel.Dock="Top"/>
-                    <ScrollViewer Margin="2,0,0,0" VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <ItemsControl ItemsSource="{Binding Source={ui:RootObject}, Path=RecentFiles}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Cursor="Hand" MouseDown="{ui:Method LoadRecentFile}">
-                                            <StackPanel.Style>
-                                                <Style>
-                                                    <Style.Triggers>
-                                                        <Trigger Property="ContentElement.IsMouseOver" Value="True">
-                                                            <Setter Property="StackPanel.Background" Value="Gainsboro" />
-                                                            <Setter Property="TextBlock.Foreground" Value="DodgerBlue" />
-                                                        </Trigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </StackPanel.Style>
-                                            <StackPanel.Tag>
-                                                <Binding />
-                                            </StackPanel.Tag>
-                                            <Image Width="16" Height="16" Source="{Binding Path=Icon, IsAsync=True}"/>
-                                            <TextBlock Text="{Binding Path=FileName}" Padding="2" Name="Text" />
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </StackPanel>
-                    </ScrollViewer>
-                </DockPanel>
-            </Grid>
-            <ListView Name="ContentsList" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden" SelectionMode="Single">
-                <ListView.ItemTemplate>
-                    <DataTemplate>
-                        <TextBlock Text="{Binding Converter={ui:ListItem}}" />
-                    </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
-            <TreeView Name="ContentsTree" VirtualizingStackPanel.IsVirtualizing="True" Grid.Row="0" Visibility="Hidden">
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate>
-                        <HierarchicalDataTemplate.ItemsSource>
-                            <MultiBinding Converter="{ui:TreeNodeItems}">
-                                <Binding RelativeSource="{RelativeSource Self}" Path="IsExpanded" />
-                                <Binding />
-                            </MultiBinding>
-                        </HierarchicalDataTemplate.ItemsSource>
-                        <TextBlock Text="{Binding Converter={ui:TreeNodeHeader}}" />
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
-            <GridSplitter Grid.Row="1" ResizeDirection="Rows" Width="Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Height="Auto">
-                <GridSplitter.Background>
-                    <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
-                        <GradientStop Color="LightGray" Offset="0"/>
-                        <GradientStop Color="White" Offset="1"/>
-                    </LinearGradientBrush>
-                </GridSplitter.Background>
-            </GridSplitter>
-            <GroupBox Grid.Row="1" Grid.RowSpan="2" Name="SymbolPanel" Header="Symbol" Background="WhiteSmoke" Padding="4" Margin="0,4,0,0">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition />
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Name:" Grid.Row="0" Grid.Column="0" />
-                    <TextBlock Grid.Row="1" Grid.Column="0">
-                        <Hyperlink Name="SymbolLocationLink" IsEnabled="{Binding ElementName=SymbolLocationLink, Path=Tag, Converter={ui:IsNotNull}, TargetNullValue=false}">Location</Hyperlink>:
-                    </TextBlock>
-                    <TextBlock Text="Size:" Grid.Row="2" Grid.Column="0" />
-                    <TextBlock Text="Address:" Grid.Row="3" Grid.Column="0" />
-                    <TextBlock Text="Section:" Grid.Row="4" Grid.Column="0" />
-                    <TextBox Name="SymbolName" Grid.Row="0" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" TextWrapping="Wrap" MaxLines="4" Text="{Binding ElementName=SymbolPanel, Path=Tag.name, Mode=OneWay}" ui:TextBox.DoubleClickSelectsAll="True" />
-                    <TextBox Name="SymbolLocation" Grid.Row="1" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" ui:TextBox.DoubleClickSelectsAll="True" />
-                    <TextBox Name="SymbolSize" Grid.Row="2" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" Text="{Binding ElementName=SymbolPanel, Path=Tag.size, Mode=OneWay, StringFormat='#,0'}" ui:TextBox.DoubleClickSelectsAll="True" />
-                    <TextBox Name="SymbolAddress" Grid.Row="3" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" Text="{Binding ElementName=SymbolPanel, Path=Tag.address, Mode=OneWay, StringFormat=0x{0:x}}" ui:TextBox.DoubleClickSelectsAll="True" />
-                    <TextBox Name="SymbolSection" Grid.Row="4" Grid.Column="1" IsReadOnly="True" BorderThickness="0" Background="Transparent" Text="{Binding ElementName=SymbolPanel, Path=Tag.section, Mode=OneWay}" ui:TextBox.DoubleClickSelectsAll="True" />
-                </Grid>
-            </GroupBox>
+            </TabItem>
+        </TabControl>
+        <Grid Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Background="Gainsboro" UseLayoutRounding="True" Visibility="Hidden">
+            <Border BorderThickness="1" BorderBrush="DarkGray" />
+            <StackPanel Orientation="Vertical">
+                <TextBlock Name="LabelLoading" Text="Loading..." HorizontalAlignment="Center" Margin="4" />
+                <ProgressBar HorizontalAlignment="Center" Height="20" Width="200" IsIndeterminate="True" Margin="4" />
+            </StackPanel>
         </Grid>
-        <Grid Row="1">
-            <Grid Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Background="Gainsboro" UseLayoutRounding="True" Visibility="Hidden">
-                <Border BorderThickness="1" BorderBrush="DarkGray" />
-                <StackPanel Orientation="Vertical">
-                    <TextBlock Name="LabelLoading" Text="Loading..." HorizontalAlignment="Center" Margin="4" />
-                    <ProgressBar HorizontalAlignment="Center" Height="20" Width="200" IsIndeterminate="True" Margin="4" />
-                </StackPanel>
-            </Grid>
-        </Grid>
-        <StatusBar Grid.Row="2">
+        <StatusBar Grid.Row="1">
             <TextBlock Name="LabelStatus" Text="" />
         </StatusBar>
     </Grid>

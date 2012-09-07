@@ -23,9 +23,9 @@ let window = Application.LoadComponent(Uri("src/ui/mainwindow.xaml", UriKind.Rel
 let editor = lazy Editor.Window()
 
 module gcontrols =
+    let sessions = window?Sessions :?> TabControl
     let panelLoading = window?PanelLoading :?> Panel
     let labelLoading = window?LabelLoading :?> TextBlock
-    let welcomePanel = window?WelcomePanel :?> Grid
     let preloadFiles = window?PreloadFiles :?> CheckBox
 
 let getSymbolSource path preload =
@@ -63,33 +63,38 @@ let loadFile path =
     gcontrols.labelLoading.Text <- sprintf "Loading %s..." path
     let preload = gcontrols.preloadFiles.IsChecked.Value
 
+    let tabcontent = Application.LoadComponent(Uri("src/ui/session.xaml", UriKind.Relative)) :?> UserControl
+    let tab = TabItem(Header = path, Content = tabcontent)
+
     let controls: UI.Session.Controls =
-        { displayData = window?DisplayData :?> ComboBox 
-          displayView = window?DisplayView :?> ComboBox
-          filterText = window?FilterText :?> TextBox
-          filterTextType = window?FilterTextType :?> ComboBox 
-          filterSize = window?FilterSize :?> TextBox
-          filterSections = window?FilterSections :?> ComboBox
-          groupTemplates = window?GroupTemplates :?> ComboBox
-          groupPrefix = window?GroupPrefix :?> ComboBox
-          groupLineMerge = window?GroupLineMerge :?> TextBox
-          pathRemapSource = window?PathRemapSource :?> TextBox
-          pathRemapTarget = window?PathRemapTarget :?> TextBox
+        { displayData = tabcontent?DisplayData :?> ComboBox 
+          displayView = tabcontent?DisplayView :?> ComboBox
+          filterText = tabcontent?FilterText :?> TextBox
+          filterTextType = tabcontent?FilterTextType :?> ComboBox 
+          filterSize = tabcontent?FilterSize :?> TextBox
+          filterSections = tabcontent?FilterSections :?> ComboBox
+          groupTemplates = tabcontent?GroupTemplates :?> ComboBox
+          groupPrefix = tabcontent?GroupPrefix :?> ComboBox
+          groupLineMerge = tabcontent?GroupLineMerge :?> TextBox
+          pathRemapSource = tabcontent?PathRemapSource :?> TextBox
+          pathRemapTarget = tabcontent?PathRemapTarget :?> TextBox
           labelStatus = window?LabelStatus :?> TextBlock
-          symbolLocation = window?SymbolLocation :?> TextBox
-          symbolLocationLink = window?SymbolLocationLink :?> Hyperlink
-          symbolPanel = window?SymbolPanel :?> GroupBox
-          contentsTree = window?ContentsTree :?> TreeView
-          contentsList = window?ContentsList :?> ListView
+          symbolLocation = tabcontent?SymbolLocation :?> TextBox
+          symbolLocationLink = tabcontent?SymbolLocationLink :?> Hyperlink
+          symbolPanel = tabcontent?SymbolPanel :?> GroupBox
+          contentsTree = tabcontent?ContentsTree :?> TreeView
+          contentsList = tabcontent?ContentsList :?> ListView
           editor = editor
         }
+
+    gcontrols.sessions.Items.Add(tab) |> ignore
+    tab.IsSelected <- true
 
     protectUI $ async {
         try
             let ess = getSymbolSource path preload
             do! UI.Session.bindToViewAsync controls ess
 
-            gcontrols.welcomePanel.Visibility <- Visibility.Hidden
             updateRecentFileList path
         finally
             async {
