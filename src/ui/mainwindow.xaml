@@ -3,7 +3,11 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" 
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="d"
        xmlns:ui="clr-namespace:UI;assembly=codesize"
-       x:Name="MainWindow" Title="codesize" Height="480" Width="890" ResizeMode="CanResizeWithGrip" ui:Window.AutoSavePlacement="True">
+       x:Name="MainWindow"
+       Height="480" Width="890" ResizeMode="CanResizeWithGrip" ui:Window.AutoSavePlacement="True">
+    <Window.Title>
+        <Binding ElementName="Sessions" Path="SelectedItem.Header" StringFormat="codesize - {0}"/>
+    </Window.Title>
     <Window.Resources>
         <Style x:Key="TabItemCloseButtonStyle" TargetType="{x:Type Button}">
            <Setter Property="Margin" Value="4,0,-4,0" />
@@ -42,6 +46,14 @@
               </Setter.Value>
            </Setter>
         </Style>
+        <DataTemplate x:Key="TabItemCloseHeaderTemplate">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding}" />
+                <Button Style="{StaticResource TabItemCloseButtonStyle}"
+                    Command="{ui:TabItemCloseCommand}"
+                    CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type TabItem}}}"/>
+            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>

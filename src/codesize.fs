@@ -58,19 +58,12 @@ let updateRecentFileList path =
 
 let loadFile path =
     window.IsEnabled <- false
-    window.Title <- sprintf "%s - %s" window.Title path
     gcontrols.panelLoading.Visibility <- Visibility.Visible
     gcontrols.labelLoading.Text <- sprintf "Loading %s..." path
     let preload = gcontrols.preloadFiles.IsChecked.Value
 
     let tabcontent = Application.LoadComponent(Uri("src/ui/session.xaml", UriKind.Relative)) :?> UserControl
-    let tabheader = StackPanel(Orientation = Orientation.Horizontal)
-    let tabclose = Button()
-    tabclose.Style <- window.Resources.["TabItemCloseButtonStyle"] :?> Style
-    tabheader.Children.Add(TextBlock(Text = path)) |> ignore
-    tabheader.Children.Add(tabclose) |> ignore
-
-    let tab = TabItem(Header = tabheader, Content = tabcontent)
+    let tab = TabItem(Header = path, HeaderTemplate = (window.Resources.["TabItemCloseHeaderTemplate"] :?> DataTemplate), Content = tabcontent)
 
     let controls: UI.Session.Controls =
         { displayData = tabcontent?DisplayData :?> ComboBox 
@@ -94,8 +87,6 @@ let loadFile path =
         }
 
     gcontrols.sessions.Items.Add(tab) |> ignore
-    tabclose.Click.Add(fun _ ->
-        gcontrols.sessions.Items.Remove(tab))
 
     tab.IsSelected <- true
 

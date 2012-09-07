@@ -74,3 +74,18 @@ type RootObject() =
         match sp.GetService(typeof<IRootObjectProvider>) with
         | :? IRootObjectProvider as p -> p.RootObject
         | _ -> null
+
+type TabItemCloseCommand() =
+    inherit MarkupExtension()
+
+    override this.ProvideValue(sp) =
+        { new ICommand with
+          member this.CanExecute(arg) = true
+          member this.add_CanExecuteChanged(h) = ()
+          member this.remove_CanExecuteChanged(h) = ()
+
+          member this.Execute(arg) =
+            let tabitem = arg :?> TabItem
+            let tabcontrol = tabitem.Parent :?> TabControl
+            tabcontrol.Items.Remove(tabitem) |> ignore
+         } |> box
