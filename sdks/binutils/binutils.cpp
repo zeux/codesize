@@ -332,9 +332,11 @@ struct DecodedLineVMExtractor: DecodedLineVM
 struct BuFile
 {
     std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> abfd;
+    std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> parent;
     std::vector<asymbol*> symtab;
 
-    BuFile(std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> abfd, std::vector<asymbol*> symtab): abfd(std::move(abfd)), symtab(std::move(symtab))
+    BuFile(std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> abfd, std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> parent, std::vector<asymbol*> symtab)
+        : abfd(std::move(abfd)), parent(std::move(parent)), symtab(std::move(symtab))
     {
     }
 };
@@ -463,6 +465,20 @@ BuFile* buFileOpen(const char* path, bool preload, int offset)
     std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> abfd(bfd_openr_iovec(path, 0, iovecOpen, &p, iovecRead, iovecClose, iovecStat), bfd_close);
     if (!abfd) return 0;
 
+    // for an archive, open first contained file (this handles Mac universal binaries)
+    std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> parent(nullptr, bfd_close);
+
+    if (bfd_check_format(abfd.get(), bfd_archive))
+    {
+        parent.swap(abfd);
+
+        abfd.reset(bfd_openr_next_archived_file(parent.get(), nullptr));
+        if (!abfd) return 0;
+
+        // work around a bug in bfd: iostream is not set for a child bfd instance
+        abfd->iostream = parent->iostream;
+    }
+
     // choose a target
     char** targets = 0;
 
@@ -485,7 +501,7 @@ BuFile* buFileOpen(const char* path, bool preload, int offset)
     symtab.insert(symtab.end(), dyntab.begin(), dyntab.end());
     symtab.push_back(0);
 
-    return new BuFile(std::move(abfd), std::move(symtab));
+    return new BuFile(std::move(abfd), std::move(parent), std::move(symtab));
 }
 
 void buFileClose(BuFile* file)
