@@ -81,7 +81,10 @@ let loadFile path =
           symbolPanel = tabcontent?SymbolPanel :?> GroupBox
           contentsTree = tabcontent?ContentsTree :?> TreeView
           contentsList = tabcontent?ContentsList :?> ListView
-          editor = editor
+          editor = editor.Force
+          rebindToViewAgent = AsyncUI.SingleUpdateAgent()
+          updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
+          jumpToAgent = AsyncUI.SingleUpdateAgent()
         }
 
     gcontrols.sessions.Items.Add(tab) |> ignore

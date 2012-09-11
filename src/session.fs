@@ -52,7 +52,12 @@ type Controls =
       symbolPanel: GroupBox
       contentsTree: TreeView
       contentsList: ListView
-      editor: Editor.Window Lazy
+
+      editor: unit -> Editor.Window
+
+      rebindToViewAgent: AsyncUI.SingleUpdateAgent
+      updateSymbolLocationAgent: AsyncUI.SingleUpdateAgent
+      jumpToAgent: AsyncUI.SingleUpdateAgent
     }
 
 let protectUI = UI.Exception.protect
@@ -363,10 +368,8 @@ let rebindToViewAsync controls (ess: ISymbolSource) =
         | :? OperationCanceledException -> ()
     }
 
-let rebindToViewAgent = AsyncUI.SingleUpdateAgent()
-
 let rebindToView controls ess =
-    rebindToViewAgent.Post(protectUI $ rebindToViewAsync controls ess)
+    controls.rebindToViewAgent.Post(protectUI $ rebindToViewAsync controls ess)
 
 let updateDisplayUI controls ess =
     controls.displayData.SelectionChanged.Add(fun _ -> rebindToView controls ess)
@@ -392,8 +395,6 @@ let updateFilterUI controls ess sections =
     controls.groupTemplates.SelectionChanged.Add(fun _ -> rebindToView controls ess)
     controls.groupLineMerge.TextChanged.Add(fun _ -> rebindToView controls ess)
 
-let updateSymbolLocationAgent = AsyncUI.SingleUpdateAgent()
-
 let updateSelectedSymbol controls (ess: ISymbolSource) (item: obj) =
     match item with
     | :? Symbol as sym ->
@@ -418,7 +419,7 @@ let updateSelectedSymbol controls (ess: ISymbolSource) (item: obj) =
 
             controls.symbolLocation.Text <- text
             controls.symbolLocationLink.Tag <- tag
-        } |> updateSymbolLocationAgent.Post
+        } |> controls.updateSymbolLocationAgent.Post
     | _ ->
         controls.symbolPanel.Tag <- null
         controls.symbolLocation.Text <- ""
@@ -433,8 +434,6 @@ let updatePathRemap controls ess =
     | DisplayData.Files, _ ->
         rebindToView controls ess
     | _ -> ()
-
-let jumpToAgent = AsyncUI.SingleUpdateAgent()
 
 let jumpToSymbol controls (ess: ISymbolSource) (sym: Symbol) =
     let pathRemap = getPathRemapFn controls
@@ -453,24 +452,24 @@ let jumpToSymbol controls (ess: ISymbolSource) (sym: Symbol) =
         do! AsyncUI.switchToUI ()
 
         match fl with
-        | Some (file, line) -> controls.editor.Value.Open(file, line)
+        | Some (file, line) -> (controls.editor ()).Open(file, line)
         | None -> ()
     }
 
 let jumpToFile controls file =
     if File.Exists(file.file) then
-        controls.editor.Value.Open(file.file, file.lineBegin, highlightRange = (file.lineBegin, file.lineEnd))
+        (controls.editor ()).Open(file.file, file.lineBegin, highlightRange = (file.lineBegin, file.lineEnd))
 
 let jumpToItem controls ess (item: obj) =
     match item with
-    | :? Symbol as sym -> jumpToAgent.Post(jumpToSymbol controls ess sym)
+    | :? Symbol as sym -> controls.jumpToAgent.Post(jumpToSymbol controls ess sym)
     | :? FileLineRange as file -> jumpToFile controls file
     | _ -> ()
 
 let updateSymbolUI controls (ess: ISymbolSource) =
     controls.symbolLocationLink.Click.Add(fun _ ->
         match controls.symbolLocationLink.Tag with
-        | :? (string * int) as fl -> controls.editor.Value.Open(fst fl, snd fl)
+        | :? (string * int) as fl -> (controls.editor ()).Open(fst fl, snd fl)
         | _ -> ())
 
     controls.contentsTree.MouseDoubleClick.Add(fun _ ->
