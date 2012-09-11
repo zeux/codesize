@@ -454,6 +454,26 @@ int iovecStat(struct bfd *abfd, void *stream, struct stat *sb)
     return 0;
 }
 
+bool checkFormat(bfd *abfd, bfd_format format)
+{
+    char** targets = 0;
+
+    // single valid target
+    if (bfd_check_format_matches(abfd, format, &targets))
+        return 1;
+
+    // ambiguity during target selection; try to select first target
+    if (targets)
+    {
+        bfd_find_target(targets[0], abfd);
+
+        return bfd_check_format(abfd, format);
+    }
+
+    // some other error, fail
+    return 0;
+}
+
 BuFile* buFileOpen(const char* path, bool preload, int offset)
 {
     iovecStreamParams p = {path, preload, offset};
@@ -468,7 +488,7 @@ BuFile* buFileOpen(const char* path, bool preload, int offset)
     // for an archive, open first contained file (this handles Mac universal binaries)
     std::unique_ptr<bfd, bfd_boolean (*)(bfd*)> parent(nullptr, bfd_close);
 
-    if (bfd_check_format(abfd.get(), bfd_archive))
+    if (checkFormat(abfd.get(), bfd_archive))
     {
         parent.swap(abfd);
 
@@ -479,17 +499,8 @@ BuFile* buFileOpen(const char* path, bool preload, int offset)
         abfd->iostream = parent->iostream;
     }
 
-    // choose a target
-    char** targets = 0;
-
-    if (!bfd_check_format_matches(abfd.get(), bfd_object, &targets))
-    {
-        // try to pick the first target in case of ambiguity
-        if (targets) bfd_find_target(targets[0], abfd.get());
-
-        // confirm that selected target worked
-        if (!bfd_check_format(abfd.get(), bfd_object)) return 0;
-    }
+    // we should be working with an object file now
+    if (!checkFormat(abfd.get(), bfd_object)) return 0;
 
     // decompress sections (we don't know if we'll need it)
     abfd->flags |= BFD_DECOMPRESS;
