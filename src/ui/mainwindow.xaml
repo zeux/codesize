@@ -167,15 +167,8 @@
                 </Grid>
             </TabItem>
         </TabControl>
-        <Grid Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Background="Gainsboro" UseLayoutRounding="True" Visibility="Hidden">
-            <Border BorderThickness="1" BorderBrush="DarkGray" />
-            <StackPanel Orientation="Vertical">
-                <TextBlock Name="LabelLoading" Text="Loading..." HorizontalAlignment="Center" Margin="4" />
-                <ProgressBar HorizontalAlignment="Center" Height="20" Width="200" IsIndeterminate="True" Margin="4" />
-            </StackPanel>
-        </Grid>
         <StatusBar Grid.Row="1">
-            <TextBlock Name="LabelStatus" Text="" />
+            <TextBlock Text="{Binding ElementName=Sessions, Path=SelectedItem.Content.Tag}" />
         </StatusBar>
     </Grid>
 </ui:MainWindow>

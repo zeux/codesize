@@ -62,9 +62,13 @@ type TreeNodeItems() =
 
         member this.ConvertBack(values, targetType, parameter, culture) = failwith "Not implemented"
 
-type BoolToVisibility() =
+type BoolToVisible() =
     inherit FnConverter<bool, Visibility>(fun item ->
         if item then Visibility.Visible else Visibility.Hidden)
+
+type BoolToHidden() =
+    inherit FnConverter<bool, Visibility>(fun item ->
+        if item then Visibility.Hidden else Visibility.Visible)
 
 type TypeToString() =
     inherit FnConverter<obj, string>(fun item ->

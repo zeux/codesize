@@ -5,10 +5,10 @@
        xmlns:ui="clr-namespace:UI;assembly=codesize">
     <UserControl.Resources>
         <Style x:Key="VisibleForSymbols" TargetType="FrameworkElement">
-            <Setter Property="Visibility" Value="{Binding ElementName=DisplayDataSymbols, Path=IsSelected, Converter={ui:BoolToVisibility}}" />
+            <Setter Property="Visibility" Value="{Binding ElementName=DisplayDataSymbols, Path=IsSelected, Converter={ui:BoolToVisible}}" />
         </Style>
         <Style x:Key="VisibleForFiles" TargetType="FrameworkElement">
-            <Setter Property="Visibility" Value="{Binding ElementName=DisplayDataFiles, Path=IsSelected, Converter={ui:BoolToVisibility}}" />
+            <Setter Property="Visibility" Value="{Binding ElementName=DisplayDataFiles, Path=IsSelected, Converter={ui:BoolToVisible}}" />
         </Style>
     </UserControl.Resources>
     <Grid>
@@ -171,8 +171,12 @@
                 </Grid>
             </GroupBox>
         </Grid>
-        <StatusBar Grid.Row="2">
-            <TextBlock Name="LabelStatus" Text="" />
-        </StatusBar>
+        <Grid Name="PanelLoading" VerticalAlignment="Center" HorizontalAlignment="Center" Background="Gainsboro" UseLayoutRounding="True" Grid.RowSpan="3" Panel.ZIndex="1" Visibility="{Binding Source={ui:RootObject}, Path=IsEnabled, Converter={ui:BoolToHidden}}">
+            <Border BorderThickness="1" BorderBrush="DarkGray" />
+            <StackPanel Orientation="Vertical">
+                <TextBlock Name="LabelLoading" Text="Loading..." HorizontalAlignment="Center" Margin="4" />
+                <ProgressBar HorizontalAlignment="Center" Height="20" Width="200" IsIndeterminate="True" Margin="4" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </UserControl>

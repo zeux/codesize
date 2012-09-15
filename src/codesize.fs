@@ -22,8 +22,6 @@ let editor = lazy Editor.Window()
 
 module gcontrols =
     let sessions = window?Sessions :?> TabControl
-    let panelLoading = window?PanelLoading :?> Panel
-    let labelLoading = window?LabelLoading :?> TextBlock
     let preloadFiles = window?PreloadFiles :?> CheckBox
 
 let getSymbolSource path preload =
@@ -61,7 +59,8 @@ let loadFile path =
     let tab = TabItem(Header = path, HeaderTemplate = (window.Resources.["TabItemCloseHeaderTemplate"] :?> DataTemplate), Content = tabcontent)
 
     let controls: UI.Session.Controls =
-        { displayData = tabcontent?DisplayData :?> ComboBox 
+        { content = tabcontent
+          displayData = tabcontent?DisplayData :?> ComboBox 
           displayView = tabcontent?DisplayView :?> ComboBox
           filterText = tabcontent?FilterText :?> TextBox
           filterTextType = tabcontent?FilterTextType :?> ComboBox 
@@ -72,7 +71,6 @@ let loadFile path =
           groupLineMerge = tabcontent?GroupLineMerge :?> TextBox
           pathRemapSource = tabcontent?PathRemapSource :?> TextBox
           pathRemapTarget = tabcontent?PathRemapTarget :?> TextBox
-          labelStatus = window?LabelStatus :?> TextBlock
           symbolLocation = tabcontent?SymbolLocation :?> TextBox
           symbolLocationLink = tabcontent?SymbolLocationLink :?> Hyperlink
           symbolPanel = tabcontent?SymbolPanel :?> GroupBox
@@ -89,21 +87,21 @@ let loadFile path =
     tab.Loaded.Add(fun _ -> tab.IsSelected <- true)
 
     tabcontent.IsEnabled <- false
-    // gcontrols.panelLoading.Visibility <- Visibility.Visible
-    gcontrols.labelLoading.Text <- sprintf "Loading %s..." path
 
-    protectUI $ async {
+    async {
         try
             let ess = getSymbolSource path preload
             do! UI.Session.bindToViewAsync controls ess
 
             updateRecentFileList path
-        finally
-            async {
-                do! AsyncUI.switchToUI ()
-                tabcontent.IsEnabled <- true
-                gcontrols.panelLoading.Visibility <- Visibility.Hidden
-            } |> Async.Start
+
+            tabcontent.IsEnabled <- true
+        with e ->
+            do! AsyncUI.switchToUI ()
+            UI.Exception.uploadException e
+            UI.Exception.showModal e
+
+            gcontrols.sessions.Items.Remove(tab)
     } |> Async.Start
 
 let getOpenFileName () =

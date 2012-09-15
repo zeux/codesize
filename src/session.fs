@@ -35,7 +35,9 @@ type GroupPrefix =
 | Word = 1
 
 type Controls =
-    { displayData: ComboBox
+    { content: UserControl
+    
+      displayData: ComboBox
       displayView: ComboBox
       filterText: TextBox
       filterTextType: ComboBox
@@ -46,7 +48,6 @@ type Controls =
       groupLineMerge: TextBox
       pathRemapSource: TextBox
       pathRemapTarget: TextBox
-      labelStatus: TextBlock
       symbolLocation: TextBox
       symbolLocationLink: Hyperlink
       symbolPanel: GroupBox
@@ -264,6 +265,9 @@ let deactivateView (view: ItemsControl) =
 let activateView (view: ItemsControl) =
     view.Visibility <- Visibility.Visible
 
+let updateStatus controls value =
+    controls.content.Tag <- value
+
 let rebindToViewSymbolsAsync controls (ess: ISymbolSource) view switchView =
     async {
         let! token = Async.CancellationToken
@@ -295,7 +299,7 @@ let rebindToViewSymbolsAsync controls (ess: ISymbolSource) view switchView =
             controls.contentsList.ItemsSource <- items
         | e -> failwithf "Unknown view %O" e
 
-        controls.labelStatus.Text <- "Total: " + stats
+        updateStatus controls $ "Total: " + stats
     }
 
 let rebindToViewFilesAsync controls (ess: ISymbolSource) view switchView =
@@ -335,7 +339,7 @@ let rebindToViewFilesAsync controls (ess: ISymbolSource) view switchView =
             controls.contentsList.ItemsSource <- items
         | e -> failwithf "Unknown view %O" e
 
-        controls.labelStatus.Text <- "Total: " + stats
+        updateStatus controls $ "Total: " + stats
     }
 
 let rebindToViewAsync controls (ess: ISymbolSource) =
@@ -345,7 +349,7 @@ let rebindToViewAsync controls (ess: ISymbolSource) =
         let view = enum controls.displayView.SelectedIndex
         let data = enum controls.displayData.SelectedIndex
 
-        controls.labelStatus.Text <- "Filtering..."
+        updateStatus controls $ "Filtering..."
 
         let switchView () =
             match view with
