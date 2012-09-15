@@ -55,9 +55,6 @@ let updateRecentFileList path =
         |> String.concat "*"
 
 let loadFile path =
-    window.IsEnabled <- false
-    gcontrols.panelLoading.Visibility <- Visibility.Visible
-    gcontrols.labelLoading.Text <- sprintf "Loading %s..." path
     let preload = gcontrols.preloadFiles.IsChecked.Value
 
     let tabcontent = Application.LoadComponent(Uri("src/ui/session.xaml", UriKind.Relative)) :?> UserControl
@@ -89,7 +86,11 @@ let loadFile path =
 
     gcontrols.sessions.Items.Add(tab) |> ignore
 
-    tab.IsSelected <- true
+    tab.Loaded.Add(fun _ -> tab.IsSelected <- true)
+
+    tabcontent.IsEnabled <- false
+    // gcontrols.panelLoading.Visibility <- Visibility.Visible
+    gcontrols.labelLoading.Text <- sprintf "Loading %s..." path
 
     protectUI $ async {
         try
@@ -100,7 +101,7 @@ let loadFile path =
         finally
             async {
                 do! AsyncUI.switchToUI ()
-                window.IsEnabled <- true
+                tabcontent.IsEnabled <- true
                 gcontrols.panelLoading.Visibility <- Visibility.Hidden
             } |> Async.Start
     } |> Async.Start

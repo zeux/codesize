@@ -9,6 +9,13 @@
         <Binding ElementName="Sessions" Path="SelectedItem.Header" StringFormat="codesize - {0}"/>
     </Window.Title>
     <Window.Resources>
+        <Storyboard x:Key="ScaleStoryboard">
+            <Storyboard.DesiredFrameRate>30</Storyboard.DesiredFrameRate>
+            <DoubleAnimation From="0" To="1.0" Duration="00:00:01" RepeatBehavior="Forever"
+                Storyboard.Target="{Binding TemplatedParent}"
+                Storyboard.TargetProperty="Opacity"
+                AutoReverse="True" />
+        </Storyboard>
         <Style x:Key="TabItemCloseButtonStyle" TargetType="{x:Type Button}">
            <Setter Property="Margin" Value="4,0,-4,0" />
            <Setter Property="Width" Value="14" />
@@ -24,7 +31,7 @@
                                 <EllipseGeometry RadiusX="7" RadiusY="7" Center="7,7" />
                             </Path.Data>
                         </Path>
-                        <Path x:Name="ButtonPathNormal" Stroke="LightGray" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
+                        <Path x:Name="ButtonPathNormal" Stroke="Gray" StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round">
                             <Path.Data>
                                 M4,4 L10,10 M4,10 L10,4
                             </Path.Data>
@@ -36,7 +43,15 @@
                           <Setter TargetName="ButtonPathNormal" Property="Stroke" Value="White" />
                        </Trigger>
                        <Trigger Property="IsEnabled" Value="false">
-                          <Setter Property="Visibility" Value="Collapsed" />
+                          <Setter TargetName="ButtonPathHover" Property="Fill">
+                            <Setter.Value>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="PaleGreen" Offset="0.3" />
+                                    <GradientStop Color="LimeGreen" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Setter.Value>
+                          </Setter>
+                          <Setter TargetName="ButtonPathNormal" Property="Visibility" Value="Hidden" />
                        </Trigger>
                        <Trigger Property="IsPressed" Value="true">
                           <Setter TargetName="ButtonPathHover" Property="Fill" Value="DarkGray" />
@@ -45,13 +60,29 @@
                  </ControlTemplate>
               </Setter.Value>
            </Setter>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type TabItem}}, Path=Content.IsEnabled}" Value="False">
+                    <DataTrigger.Setters>
+                        <Setter Property="IsEnabled" Value="False" />
+                    </DataTrigger.Setters>
+                    <DataTrigger.EnterActions>
+                        <BeginStoryboard Storyboard="{StaticResource ScaleStoryboard}" x:Name="ScaleButton" />
+                    </DataTrigger.EnterActions>
+                    <DataTrigger.ExitActions>
+                        <StopStoryboard BeginStoryboardName="ScaleButton" />
+                    </DataTrigger.ExitActions>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
         <DataTemplate x:Key="TabItemCloseHeaderTemplate">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding}" />
-                <Button Style="{StaticResource TabItemCloseButtonStyle}"
+                <Label Content="{Binding}" Padding="0"
+                    IsEnabled="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type TabItem}}, Path=Content.IsEnabled}" />
+                <Button x:Name="CloseButton" Style="{StaticResource TabItemCloseButtonStyle}"
                     Command="{ui:TabItemCloseCommand}"
-                    CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type TabItem}}}"/>
+                    CommandParameter="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type TabItem}}}"
+                    Opacity="1">
+                </Button>
             </StackPanel>
         </DataTemplate>
     </Window.Resources>
