@@ -11,7 +11,7 @@
         </Grid.RowDefinitions>
         <Border BorderBrush="Red" BorderThickness="2" Grid.RowSpan="2" />
         <StackPanel Margin="4">
-            <TextBlock>
+            <TextBlock TextWrapping="Wrap">
                 <TextBlock.Text>
                     <MultiBinding StringFormat="{}{0}: {1}">
                         <Binding ElementName="Window" Path="Tag" Converter="{ui:TypeToString}" />
