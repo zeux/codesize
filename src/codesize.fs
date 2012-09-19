@@ -24,16 +24,31 @@ module gcontrols =
     let sessions = window?Sessions :?> TabControl
     let preloadFiles = window?PreloadFiles :?> CheckBox
 
+let (|Prefix|_|) (prefix: string) (data: byte array) =
+    if data.Length >= prefix.Length && data.[0..prefix.Length-1] = (prefix.ToCharArray() |> Array.map byte) then Some ""
+    else None
+
 let getSymbolSource path preload =
-    match Path.GetExtension(path).ToLower() with
-    | ".elf" ->
+    let header =
+        let res = Array.zeroCreate 32
+        use file = File.OpenRead(path)
+        let length = file.Read(res, 0, res.Length)
+        res.[0..length-1]
+
+    match header with
+    | Prefix "\x7fELF" _ ->
         ElfSymbolSource(path, preload) :> ISymbolSource
-    | ".self" ->
+    | Prefix "\xfe\xed\xfa\xce" _
+    | Prefix "\xce\xfa\xed\xfe" _  -> // Mach-O binary
+        ElfSymbolSource(path, preload) :> ISymbolSource
+    | Prefix "\xca\xfe\xba\xbe" _ -> // Mach-O universal binary
+        ElfSymbolSource(path, preload) :> ISymbolSource
+    | Prefix "SCE" _ ->
         SelfSymbolSource(path, preload) :> ISymbolSource
-    | ".pdb" ->
+    | Prefix "Microsoft C/C++ MSF 7.00\r\n" _ ->
         PdbSymbolSource(path, preload) :> ISymbolSource
-    | e ->
-        failwithf "Unknown extension %s" e
+    | _ ->
+        failwithf "Error opening file %s: unknown header [%s]" path (header |> Array.map (sprintf "%02x") |> String.concat " ")
 
 let getRecentFileList () =
     match UI.Settings.current.["RecentFiles"].Value with
@@ -105,7 +120,8 @@ let loadFile path =
     } |> Async.Start
 
 let getOpenFileName () =
-    let dlg = OpenFileDialog(Filter = "Supported files|*.elf;*.self;*.pdb", CheckFileExists = true)
+    let ext = "*.elf;*.self;*.so;*.dylib;*.pdb"
+    let dlg = OpenFileDialog(Filter = sprintf "Supported files (%s)|%s|All files (*.*)|*.*" ext ext, CheckFileExists = true)
     let res = dlg.ShowDialog(window)
     if res.HasValue && res.Value then
         Some dlg.FileName
