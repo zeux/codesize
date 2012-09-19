@@ -52,9 +52,9 @@ let getSymbolSource path preload =
     | Prefix "SCE" _ ->
         ElfSymbolSource(path, preload, offset = readOffset header 16 8) :> ISymbolSource
     | Prefix "Microsoft C/C++ MSF 7.00\r\n" _ ->
-        PdbSymbolSource(path, preload) :> ISymbolSource
+        DiaException.TranslateIn $ fun () -> PdbSymbolSource(path, preload) :> ISymbolSource
     | Prefix "MZ" _ ->
-        ExeSymbolSource(path, preload) :> ISymbolSource
+        DiaException.TranslateIn $ fun () -> ExeSymbolSource(path, preload) :> ISymbolSource
     | _ ->
         failwithf "Error opening file %s: unknown header [%s]" path (header |> Array.map (sprintf "%02x") |> String.concat " ")
 

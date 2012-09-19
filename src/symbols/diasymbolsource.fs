@@ -139,6 +139,54 @@ module private DIA =
               lineBegin = int line.lineNumber
               lineEnd = int line.lineNumberEnd} )
 
+type DiaException(message, innerException: exn) =
+    inherit Exception(message, innerException)
+
+    override this.StackTrace =
+        innerException.StackTrace
+
+    static member TranslateIn code =
+        try
+            code ()
+        with
+        :? COMException as e ->
+            raise $ DiaException.Translate e
+
+    static member Translate (e: COMException) =
+        let text = 
+            match e.ErrorCode with
+            | 0x806d0001 -> "No error"
+            | 0x806d0002 -> "Invalid usage"
+            | 0x806d0003 -> "Out of memory"
+            | 0x806d0004 -> "File system error"
+            | 0x806d0005 -> "File not found or has invalid format"
+            | 0x806d0006 -> "Signature does not match"
+            | 0x806d0007 -> "Age does not match"
+            | 0x806d0008 -> "E_PDB_PRECOMP_REQUIRED"
+            | 0x806d0009 -> "E_PDB_OUT_OF_TI"
+            | 0x806d000a -> "Not implemented"
+            | 0x806d000b -> "E_PDB_V1_PDB"
+            | 0x806d000c -> "Obsolete format"
+            | 0x806d000d -> "E_PDB_LIMIT"
+            | 0x806d000e -> "File is corrupt"
+            | 0x806d000f -> "E_PDB_TI16"
+            | 0x806d0010 -> "Access denied"
+            | 0x806d0011 -> "E_PDB_ILLEGAL_TYPE_EDIT"
+            | 0x806d0012 -> "Invalid executable"
+            | 0x806d0013 -> "Debug file not found"
+            | 0x806d0014 -> "No debug info found"
+            | 0x806d0015 -> "Executable timestamp does not match"
+            | 0x806d0016 -> "E_PDB_RESERVED"
+            | 0x806d0017 -> "Debug info is not in PDB"
+            | 0x806d0018 -> "Symbol server cache path is invalid"
+            | 0x806d0019 -> "Symbol server cache is full"
+            | _ -> ""
+
+        let message =
+            if text = "" then e.Message
+            else sprintf "%s (%08X)" text e.ErrorCode
+
+        DiaException(message, e)
 
 type DiaSymbolSource(source: IDiaDataSource) =
     let session = source.openSession()
