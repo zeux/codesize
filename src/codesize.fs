@@ -128,7 +128,7 @@ let loadFile path =
     } |> Async.Start
 
 let getOpenFileName () =
-    let ext = "*.elf;*.self;*.so;*.dylib;*.pdb"
+    let ext = "*.elf;*.self;*.so;*.dylib;*.exe;*.dll;*.pdb;*.pyd;*.mll;*.dle"
     let dlg = OpenFileDialog(Filter = sprintf "Supported files (%s)|%s|All files (*.*)|*.*" ext ext, CheckFileExists = true)
     let res = dlg.ShowDialog(window)
     if res.HasValue && res.Value then
