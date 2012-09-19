@@ -14,6 +14,5 @@ editor:
 
 other features:
 - set/reset root for treeview
-- better extension support (pyd/mll) & filters
-- open another file from within the same process (+ "file has changed, reload?" popup panel)
+- "file has changed, reload?" popup panel
 - diff between two files (need to figure out sorting criteria and to ensure that we don't keep two full datasets in memory)
