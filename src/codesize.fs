@@ -28,6 +28,12 @@ let (|Prefix|_|) (prefix: string) (data: byte array) =
     if data.Length >= prefix.Length && data.[0..prefix.Length-1] = (prefix.ToCharArray() |> Array.map byte) then Some ""
     else None
 
+let readOffset header offset size =
+    Array.sub header offset size
+    |> Array.map int64
+    |> Array.reduce (fun a b -> (a <<< 8) ||| b)
+    |> int
+
 let getSymbolSource path preload =
     let header =
         let res = Array.zeroCreate 32
@@ -39,12 +45,12 @@ let getSymbolSource path preload =
     | Prefix "\x7fELF" _ ->
         ElfSymbolSource(path, preload) :> ISymbolSource
     | Prefix "\xfe\xed\xfa\xce" _
-    | Prefix "\xce\xfa\xed\xfe" _  -> // Mach-O binary
+    | Prefix "\xce\xfa\xed\xfe" _  ->
         ElfSymbolSource(path, preload) :> ISymbolSource
-    | Prefix "\xca\xfe\xba\xbe" _ -> // Mach-O universal binary
-        ElfSymbolSource(path, preload) :> ISymbolSource
+    | Prefix "\xca\xfe\xba\xbe" _ ->
+        ElfSymbolSource(path, preload, offset = readOffset header 16 4) :> ISymbolSource
     | Prefix "SCE" _ ->
-        SelfSymbolSource(path, preload) :> ISymbolSource
+        ElfSymbolSource(path, preload, offset = readOffset header 16 8) :> ISymbolSource
     | Prefix "Microsoft C/C++ MSF 7.00\r\n" _ ->
         PdbSymbolSource(path, preload) :> ISymbolSource
     | _ ->

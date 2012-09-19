@@ -50,7 +50,6 @@
     <Compile Include="src\process.fs" />
     <Compile Include="src\symbols\symbol.fs" />
     <Compile Include="src\symbols\elfsymbolsource.fs" />
-    <Compile Include="src\symbols\selfsymbolsource.fs" />
     <Compile Include="src\symbols\diamemorystream.fs" />
     <Compile Include="src\symbols\diasymbolsource.fs" />
     <Compile Include="src\symbols\pdbsymbolsource.fs" />
