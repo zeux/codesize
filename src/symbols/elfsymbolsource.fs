@@ -141,7 +141,7 @@ type ElfSymbolSource(path, preload, ?offset) =
     let fileLineLock = obj()
 
     override this.Finalize() =
-        binutils.buFileClose file
+        if file <> 0n then binutils.buFileClose file
 
     interface ISymbolSource with
         member this.Sections = binutils.sectionList |> Seq.map binutils.getSectionName |> set |> Set.toArray
