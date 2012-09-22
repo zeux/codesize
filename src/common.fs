@@ -25,7 +25,7 @@ type Cache<'K, 'V when 'K: equality>(creator) =
 
 // generic Cell with PropertyChanged support
 type Cell<'T>(initial) =
-    let mutable value = initial
+    let mutable value: 'T = initial
     let event = Event<_, _>()
 
     member this.Value
@@ -37,3 +37,8 @@ type Cell<'T>(initial) =
     interface INotifyPropertyChanged with
         [<CLIEvent>]
         member this.PropertyChanged = event.Publish
+
+    static member Map (cell: Cell<_>) f =
+        let res = Cell(f cell.Value)
+        (cell :> INotifyPropertyChanged).PropertyChanged.Add(fun _ -> res.Value <- f cell.Value)
+        res

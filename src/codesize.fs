@@ -1,6 +1,7 @@
 module codesize
 
 open System
+open System.ComponentModel
 open System.Drawing
 open System.Drawing.Imaging
 open System.IO
@@ -164,7 +165,8 @@ type MainWindow() =
         | None -> ()
 
     member this.RecentFiles =
-        getRecentFileList () |> Array.map (fun path -> RecentFile path)
+        Cell.Map UI.Settings.current.["RecentFiles"] $ fun _ ->
+            getRecentFileList () |> Array.map (fun path -> RecentFile path)
 
     member this.LoadRecentFile (sender: obj) (e: MouseButtonEventArgs) =
         match (sender :?> FrameworkElement).Tag with
