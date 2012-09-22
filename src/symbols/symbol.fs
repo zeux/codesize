@@ -22,7 +22,7 @@ type FileLineRange =
 [<Interface>]
 type ISymbolSource =
     abstract member Sections: string[]
-    abstract member Symbols: Symbol[]
-    abstract member FileLines: FileLine[]
+    abstract member Symbols: Symbol[] Lazy
+    abstract member FileLines: FileLine[] Lazy
 
     abstract member GetFileLine: uint64 -> (string * int) option

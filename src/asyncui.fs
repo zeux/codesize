@@ -24,3 +24,9 @@ let switchToUI () =
 
 let switchToWork () =
     Async.SwitchToThreadPool ()
+
+let dispatch item =
+    if Application.Current.Dispatcher.CheckAccess() then
+        item ()
+    else
+        uiContext.Value.Post((fun _ -> item ()), null)

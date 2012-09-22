@@ -37,6 +37,7 @@ type GroupPrefix =
 type Controls =
     { content: UserControl
     
+      labelLoading: TextBlock
       displayData: ComboBox
       displayView: ComboBox
       filterText: TextBox
@@ -228,7 +229,7 @@ let getLineRangesForFile file (lines: FileLine seq) mergeDistance =
 let getLineRanges (ess: ISymbolSource) mergeDistance pathRemap =
     let normalizePath = Cache(fun path -> pathRemap path)
 
-    ess.FileLines
+    ess.FileLines.Value
     |> Seq.groupBy (fun fl -> normalizePath.[fl.file])
     |> Seq.toArray
     |> Array.collect (fun (file, lines) -> getLineRangesForFile file lines mergeDistance)
@@ -278,7 +279,7 @@ let rebindToViewSymbolsAsync controls (ess: ISymbolSource) view switchView =
 
         do! AsyncUI.switchToWork ()
 
-        let syms = ess.Symbols |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
+        let syms = ess.Symbols.Value |> Array.filter (fun sym -> token.ThrowIfCancellationRequested(); filter sym)
         let stats = getStatsSymbol syms
 
         match view with
@@ -342,6 +343,19 @@ let rebindToViewFilesAsync controls (ess: ISymbolSource) view switchView =
         updateStatus controls $ "Total: " + stats
     }
 
+let loadingPanel controls text =
+    if String.IsNullOrEmpty(text) then
+        { new IDisposable with member this.Dispose() = () }
+    else
+        let enabled = controls.content.IsEnabled
+        controls.labelLoading.Text <- text
+        controls.content.IsEnabled <- false
+
+        { new IDisposable with
+          member this.Dispose() =
+            AsyncUI.dispatch $ fun () -> controls.content.IsEnabled <- enabled
+        }
+
 let rebindToViewAsync controls (ess: ISymbolSource) =
     async {
         do! AsyncUI.switchToUI ()
@@ -350,6 +364,14 @@ let rebindToViewAsync controls (ess: ISymbolSource) =
         let data = enum controls.displayData.SelectedIndex
 
         updateStatus controls $ "Filtering..."
+
+        let loading =
+            match data with
+            | DisplayData.Symbols when not ess.Symbols.IsValueCreated -> "Reading symbols..."
+            | DisplayData.Files when not ess.FileLines.IsValueCreated -> "Reading line info..."
+            | _ -> ""
+
+        use _ = loadingPanel controls loading
 
         let switchView () =
             match view with

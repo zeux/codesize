@@ -119,7 +119,7 @@ type ElfSymbolSource(path, preload, ?offset) =
                   section = binutils.getSectionName (char s.typ)
                   name = Marshal.PtrToStringAnsi(s.name) })
 
-    let filelines =
+    let lines =
         lazy
         let data =
             use linetab = new binutils.Scoped(binutils.buLinetabOpen(file), binutils.buLinetabClose)
@@ -145,8 +145,8 @@ type ElfSymbolSource(path, preload, ?offset) =
 
     interface ISymbolSource with
         member this.Sections = binutils.sectionList |> Seq.map binutils.getSectionName |> set |> Set.toArray
-        member this.Symbols = symbols.Value
-        member this.FileLines = filelines.Value
+        member this.Symbols = symbols
+        member this.FileLines = lines
 
         member this.GetFileLine address =
             // buGetFileLine is not thread-safe

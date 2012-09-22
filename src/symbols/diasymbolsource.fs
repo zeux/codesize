@@ -196,8 +196,8 @@ type DiaSymbolSource(source: IDiaDataSource) =
 
     interface ISymbolSource with
         member this.Sections = DIA.getSectionNames session
-        member this.Symbols = symbols.Value
-        member this.FileLines = lines.Value
+        member this.Symbols = symbols
+        member this.FileLines = lines
         member this.GetFileLine address =
             let lines = session.findLinesByRVA(uint32 address, 0u)
             match lines.Next(1u) with

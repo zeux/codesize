@@ -83,6 +83,7 @@ let loadFile path =
 
     let controls: UI.Session.Controls =
         { content = tabcontent
+          labelLoading = tabcontent?LabelLoading :?> TextBlock
           displayData = tabcontent?DisplayData :?> ComboBox 
           displayView = tabcontent?DisplayView :?> ComboBox
           filterText = tabcontent?FilterText :?> TextBox
