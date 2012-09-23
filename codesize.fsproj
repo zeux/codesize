@@ -11,6 +11,7 @@
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <Name>codesize</Name>
     <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <Win32Resource>src\ui\resources.res</Win32Resource>
   </PropertyGroup>
   <Import Project="$(MSBuildProjectName).user" Condition="Exists('$(MSBuildProjectName).user')" />
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
