@@ -378,7 +378,7 @@ struct iovecStream
     }
 };
 
-void* iovecOpen(struct bfd *nbfd, void *open_closure)
+void* iovecOpen(struct bfd *, void *open_closure)
 {
     iovecStreamParams* p = static_cast<iovecStreamParams*>(open_closure);
 
@@ -410,7 +410,7 @@ void* iovecOpen(struct bfd *nbfd, void *open_closure)
     return new iovecStream(fd, contents, p->offset, fstat);
 }
 
-file_ptr iovecRead(struct bfd *nbfd, void *stream, void *buf, file_ptr nbytes, file_ptr offset)
+file_ptr iovecRead(struct bfd *, void *stream, void *buf, file_ptr nbytes, file_ptr offset)
 {
     iovecStream* s = static_cast<iovecStream*>(stream);
 
@@ -433,7 +433,7 @@ file_ptr iovecRead(struct bfd *nbfd, void *stream, void *buf, file_ptr nbytes, f
     }
 }
 
-int iovecClose(struct bfd *nbfd, void *stream)
+int iovecClose(struct bfd *, void *stream)
 {
     iovecStream* s = static_cast<iovecStream*>(stream);
 
@@ -445,7 +445,7 @@ int iovecClose(struct bfd *nbfd, void *stream)
     return 0;
 }
 
-int iovecStat(struct bfd *abfd, void *stream, struct stat *sb)
+int iovecStat(struct bfd *, void *stream, struct stat *sb)
 {
     iovecStream* s = static_cast<iovecStream*>(stream);
 
