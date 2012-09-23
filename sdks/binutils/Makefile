@@ -1,9 +1,19 @@
 MINGW=C:\MinGW64\bin
 BUVER=binutils-2.22.90
-BUILD=$(BUVER)-build
+BUILD=$(BUVER)-build-$(PLATFORM)
 
-CFLAGS=-O3 -m32 -Wall -Wextra -I$(BUVER)/include -I$(BUVER)/bfd -I$(BUILD) -DDEBUGDIR=\"\"
+CFLAGS=-O3 -Wall -Wextra -I$(BUVER)/include -I$(BUVER)/bfd -I$(BUILD) -DDEBUGDIR=\"\"
 LDFLAGS=-static-libgcc -shared -liberty -lole32 -Wl,--kill-at -s
+
+ifeq ($(PLATFORM),x86)
+CFLAGS+=-m32
+else
+ifeq ($(PLATFORM),x64)
+CFLAGS+=-m64
+else
+$(error Unknown platform)
+endif
+endif
 
 HEADERS=
 HEADERS+=$(BUILD)/bfd.h
@@ -366,9 +376,11 @@ SOURCES+=$(BUVER)/bfd/xtensa-modules.c
 
 OBJECTS=$(SOURCES:%=$(BUILD)/%.o)
 
-all: binutils.dll
+TARGET=binutils_$(PLATFORM).dll
 
-binutils.dll: binutils.cpp decodedline.cpp $(BUILD)/libbfd.a
+all: $(TARGET)
+
+$(TARGET): binutils.cpp decodedline.cpp $(BUILD)/libbfd.a
 	$(MINGW)\g++ $(CFLAGS) -I$(BUVER)/binutils -std=c++0x $^ $(LDFLAGS) -o $@
 
 $(BUILD)/libbfd.a: $(OBJECTS)
@@ -445,4 +457,4 @@ $(BUILD)/%.c.o: %.c $(HEADERS)
 clean:
 	del /s /q $(BUILD)
 
-.PHONY: all clean
+.PHONY: all clean print
