@@ -84,43 +84,50 @@ module private DIA =
 
             System.String(bytes))
 
-    // get symbol size
-    let getSymbolSize (sym: IDiaSymbol) =
-        match enum $ int sym.symTag with
-        | SymTagEnum.SymTagFunction -> sym.length
-        | SymTagEnum.SymTagData -> sym.``type``.length
-        | t -> failwithf "Unknown symbol tag %O" t
-
     // get symbol name
     let getSymbolName (sym: IDiaSymbol) =
         let undflags =
-            UNDNAME.NO_MS_KEYWORDS |||
-            UNDNAME.NO_FUNCTION_RETURNS |||
-            UNDNAME.NO_ALLOCATION_MODEL |||
-            UNDNAME.NO_ALLOCATION_LANGUAGE |||
-            UNDNAME.NO_ACCESS_SPECIFIERS |||
-            UNDNAME.NO_MEMBER_TYPE
+            if sym.``function`` = 0 then
+                UNDNAME.NAME_ONLY
+            else
+                UNDNAME.NO_MS_KEYWORDS |||
+                UNDNAME.NO_FUNCTION_RETURNS |||
+                UNDNAME.NO_ALLOCATION_MODEL |||
+                UNDNAME.NO_ALLOCATION_LANGUAGE |||
+                UNDNAME.NO_ACCESS_SPECIFIERS |||
+                UNDNAME.NO_MEMBER_TYPE
 
         let undname = sym.get_undecoratedNameEx(uint32 undflags)
         let name = if undname = null then sym.name else undname
-        name.Replace("`", "")
+
+        if name = "`string'" then
+            "string'" + sym.name
+        elif name.[0] = '`' then
+            name.[1..]
+        else
+            name
 
     // get symbol information from file
     let getSymbols (session: IDiaSession) =
         // get section names
         let sections = getSectionNames session
 
+        // get all unique public symbols (linker merges symbols with the same contents)
+        // make sure we don't merge empty symbols with non-empty symbols by keeping merge value distinct
+        let syms = 
+            toSeq $ session.findChildren(session.globalScope, SymTagEnum.SymTagPublicSymbol, null, 0u)
+            |> Seq.filter (fun s -> s.locationType = uint32 LocationType.LocIsStatic)
+            |> Seq.distinctBy (fun s -> s.virtualAddress * 2UL + (if s.length = 0UL then 0UL else 1UL))
+            |> Seq.toArray
+
         // get symbol info
-        toSeq $ session.findChildren(session.globalScope, SymTagEnum.SymTagFunction, null, 0u)
-        |> Seq.append (toSeq $ session.findChildren(session.globalScope, SymTagEnum.SymTagData, null, 0u))
-        |> Seq.filter (fun s -> s.locationType = uint32 LocationType.LocIsStatic)
-        |> Seq.toArray
+        syms
         |> Array.map (fun s ->
             let section = int s.addressSection
             let section_name = if section > 0 && section <= sections.Length then sections.[section - 1] else "" 
 
             { address = uint64 s.relativeVirtualAddress
-              size = getSymbolSize s
+              size = s.length
               section = section_name
               name = getSymbolName s })
 
