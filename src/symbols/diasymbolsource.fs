@@ -68,21 +68,24 @@ module private DIA =
     let getSectionNames (session: IDiaSession) =
         // get debug stream data with header info
         let streams = session.getEnumDebugStreams()
-        let headers = Array.init streams.count (fun i -> streams.[i]) |> Array.pick (fun s -> if s.name = "SECTIONHEADERS" then Some s else None)
+        let headers = Array.init streams.count (fun i -> streams.[i]) |> Array.tryPick (fun s -> if s.name = "SECTIONHEADERS" then Some s else None)
 
-        // get SCNHDR for each section, first 8 bytes correspond to section name
-        Array.init headers.count (fun i ->
-            // get data size
-            let (size, _) = headers.[uint32 i, 0u]
+        match headers with
+        | Some stream ->
+            // get SCNHDR for each section, first 8 bytes correspond to section name
+            Array.init stream.count (fun i ->
+                // get data size
+                let (size, _) = stream.[uint32 i, 0u]
 
-            // get data
-            let data = Array.zeroCreate (int size)
-            headers.[uint32 i, size, ref size, &data.[0]]
+                // get data
+                let data = Array.zeroCreate (int size)
+                stream.[uint32 i, size, ref size, &data.[0]]
 
-            // get section name (first 8 bytes, null-terminated if length < 8)
-            let bytes = data |> Seq.take 8 |> Seq.takeWhile ((<>) 0uy) |> Seq.map char |> Seq.toArray
+                // get section name (first 8 bytes, null-terminated if length < 8)
+                let bytes = data |> Seq.take 8 |> Seq.takeWhile ((<>) 0uy) |> Seq.map char |> Seq.toArray
 
-            System.String(bytes))
+                System.String(bytes))
+        | None -> [||]
 
     // get symbol name
     let getSymbolName (sym: IDiaSymbol) =
