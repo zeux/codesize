@@ -3,7 +3,6 @@ grouping details:
 - even if word prefix is selected, it may make sense to complete prefix names letter by letter? (i.e. D3DCreateDevice vs D3DXCreateTexture)
 
 ui responsiveness:
-- loading panel should pop up when we compute symbols/filelines
 - faster filtering (cache individual parts, only recompute what is affected by UI changes? esp. applicable to FileLine grouping)
 - async treeview group expansion (async binding + custom styling to indicate that node contents is being computed)
 
@@ -14,5 +13,6 @@ editor:
 
 other features:
 - set/reset root for treeview
+- copy to clipboard for treeview
 - "file has changed, reload?" popup panel
 - diff between two files (need to figure out sorting criteria and to ensure that we don't keep two full datasets in memory)
