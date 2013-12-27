@@ -2,6 +2,7 @@ namespace Symbols
 
 open System
 open System.Collections
+open System.Collections.Generic
 open System.Runtime.InteropServices
 
 open Dia2Lib
@@ -110,27 +111,51 @@ module private DIA =
         else
             name
 
+    let excludeSymbolsByVA (lhs : IDiaSymbol seq) (rhs: IDiaSymbol seq) =
+        let va = HashSet<_>(rhs |> Seq.map (fun s -> s.virtualAddress))
+
+        lhs |> Seq.filter (fun s -> not (va.Contains(s.virtualAddress)))
+
+    // get symbol size
+    let getSymbolSize (sym: IDiaSymbol) =
+        match enum $ int sym.symTag with
+        | SymTagEnum.SymTagFunction -> sym.length
+        | SymTagEnum.SymTagData -> sym.``type``.length
+        | SymTagEnum.SymTagPublicSymbol -> sym.length
+        | t -> failwithf "Unknown symbol tag %O" t
+
     // get symbol information from file
     let getSymbols (session: IDiaSession) =
         // get section names
         let sections = getSectionNames session
 
-        // get all unique public symbols (linker merges symbols with the same contents)
-        // make sure we don't merge empty symbols with non-empty symbols by keeping merge value distinct
-        let syms = 
-            toSeq $ session.findChildren(session.globalScope, SymTagEnum.SymTagPublicSymbol, null, 0u)
-            |> Seq.filter (fun s -> s.locationType = uint32 LocationType.LocIsStatic)
-            |> Seq.distinctBy (fun s -> s.virtualAddress * 2UL + (if s.length = 0UL then 0UL else 1UL))
+        // get function/data symbols
+        let fdsyms =
+            toSeq $ session.findChildren(session.globalScope, SymTagEnum.SymTagFunction, null, 0u)
+            |> Seq.append (toSeq $ session.findChildren(session.globalScope, SymTagEnum.SymTagData, null, 0u))
+            |> Seq.distinctBy (fun s -> s.virtualAddress)
             |> Seq.toArray
+
+        // get public symbols that are not listed in function/data symbols
+        let psyms =
+            toSeq $ session.findChildren(session.globalScope, SymTagEnum.SymTagPublicSymbol, null, 0u)
+            |> Seq.distinctBy (fun s -> s.virtualAddress)
+
+        let pfsyms = excludeSymbolsByVA psyms fdsyms |> Seq.toArray
+        
+        // do we have to filter by static here?
+        let syms =
+            Array.append pfsyms fdsyms
+            |> Array.filter (fun s -> s.locationType = uint32 LocationType.LocIsStatic)
 
         // get symbol info
         syms
         |> Array.map (fun s ->
             let section = int s.addressSection
             let section_name = if section > 0 && section <= sections.Length then sections.[section - 1] else "" 
-
+            
             { address = uint64 s.relativeVirtualAddress
-              size = s.length
+              size = getSymbolSize s
               section = section_name
               name = getSymbolName s })
 
