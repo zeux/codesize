@@ -1,0 +1,9 @@
+# build artifacts
+/bin/
+/obj/
+
+# visual studio temporary files
+/*.suo
+
+# binutils
+/sdks/binutils/binutils-*
